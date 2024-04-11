@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #!/usr/bin/env python
 import icecube
 from icecube import icetray, dataio, dataclasses
@@ -8,52 +7,127 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from icecube import MuonGun
 import numpy as np
+from pathlib import Path
+import argparse
+import pandas as pd
+import re
 
-#Function to read the GCD file and make the extruded polygon which
-#defines the edge of the in-ice array
-def MakeSurface(gcdName, padding):
-    file = dataio.I3File(gcdName, "r")
-    frame = file.pop_frame()
-    while not "I3Geometry" in frame:
+class Stack(self):
+    # def __init__(self):
+
+    def xsec_weight():
+        """ Calculates CORSIKA weights in tray and applies them to appended histogram
+        
+        Returns: hdf5 weight keys
+
+        Useage: to be used in create_hist_struct passed to the bkg strcture
+        """
+    def create_hist_struct(fileName=None, color=None, args=None):
+        """Creates two data structures containing mass, epsilon, color, gap length, and either weight or ene.
+
+        Args:
+            args: An argparse.Namespace object containing dir of samples.
+
+        Returns:
+            Three (two sig + 1 bkg) structures containing mass, epsilon, color, gap length and either weight or ene.
+        """
+
+
+        if args.withbkg is not None:
+            bkg = {
+                "legend" : "CORSIKA",
+                "color" : "#d55e00",
+                # "weight" : weight
+                "hist" : [],
+                "var and bins" :{}
+            }
+        else:
+            sig_with_weight = []
+            sig_with_ene = []
+            match = re.match(r"DarkLeptonicScalar\.mass-(?P<mass>\d+)\.eps-(?P<epsilon>[0-9e\-]+)\.(?P<type>nevents|ene)_(?P<value>[0-9e\-]+)_gap_(?P<gap>\d+)\_", fileName)
+            if args.weight is not None:
+                sig_with_weight.append({
+                    "legend" : f"{float(match.group("mass"))}GeV {float(match.group("epsilon"))} eps {int(match.group("gap"))}m ",
+                    # "weight": float(match.group("value")),
+                    "color": color,
+                    "hist" : [],
+                    "var and bins" :{}
+                })
+            else:
+                sig_with_ene.append({
+                    "legend" : f"{float(match.group("mass"))}GeV {float(match.group("epsilon"))} eps {int(match.group("gap"))}m {float(match.group("value"))} ene ",
+                    "color": color,
+                    "hist" : [],
+                    "var and bins" :{}
+                })
+                            
+        return pd.DataFrame(sig_with_weight), pd.DataFrame(sig_with_ene), pd.DataFrame(bkg)
+            
+    def makeHist(self,args):
+        # make 1 bkg hist
+        _,bkgAttri = self.create_hist_struct()
+        tray.Add(HistogramLLPs, histAttri=bkgAttri , out_dir = args.outdir GCDFile = GCD_path)
+        
+        colors = [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5", "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
+        
+        # make all other hists
+
+        for (sig, color) in zip(args.sigs, colors):
+            sigAttri,_= self.create_hist_struct(fileName=sig, color=color)
+            
+            tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"LLPSim*/*.gz")))
+            tray.Add(HistogramLLPs, histAttri=sigAttri , out_dir = args.outdir GCDFile = GCD_path)
+        
+        # Stack call here
+
+
+    #Function to read the GCD file and make the extruded polygon which
+    #defines the edge of the in-ice array
+    def MakeSurface(gcdName, padding):
+        file = dataio.I3File(gcdName, "r")
         frame = file.pop_frame()
-    geometry = frame["I3Geometry"]
-    xyList = []
-    zmax = -1e100
-    zmin = 1e100
-    step = int(len(geometry.omgeo.keys())/10)
-    print("Loading the DOM locations from the GCD file")
-    for i, key in enumerate(geometry.omgeo.keys()):
-        if i % step == 0:
-            print( "{0}/{1} = {2}%".format(i,len(geometry.omgeo.keys()), int(round(i/len(geometry.omgeo.keys())*100))))
-            
-        if key.om in [61, 62, 63, 64] and key.string <= 81: #Remove IT...
-            continue
+        while not "I3Geometry" in frame:
+            frame = file.pop_frame()
+        geometry = frame["I3Geometry"]
+        xyList = []
+        zmax = -1e100
+        zmin = 1e100
+        step = int(len(geometry.omgeo.keys())/10)
+        print("Loading the DOM locations from the GCD file")
+        for i, key in enumerate(geometry.omgeo.keys()):
+            if i % step == 0:
+                print( "{0}/{1} = {2}%".format(i,len(geometry.omgeo.keys()), int(round(i/len(geometry.omgeo.keys())*100))))
+                
+            if key.om in [61, 62, 63, 64] and key.string <= 81: #Remove IT...
+                continue
 
-        pos = geometry.omgeo[key].position
+            pos = geometry.omgeo[key].position
 
-        if pos.z > 1500:
-            continue
-            
-        xyList.append(pos)
-        i+=1
-    
-    return MuonGun.ExtrudedPolygon(xyList, padding) 
+            if pos.z > 1500:
+                continue
+                
+            xyList.append(pos)
+            i+=1
+        
+        return MuonGun.ExtrudedPolygon(xyList, padding) 
+
 
 class HistogramLLPs(icetray.I3Module):
 
     def __init__(self,ctx):
         icetray.I3Module.__init__(self,ctx)
-        self.AddParameter("folder_path", "folder_path", None)
+        self.AddParameter("out_dir", "out_dir", None)
+        self.AddParameter("histAttr", "histAttr")
         self.gcdFile = self.AddParameter("GCDFile", "GCDFile", "")
-        
+    
     def Configure(self): 
-        self.folder_path = self.GetParameter("folder_path")
+        self.out_dir = self.GetParameter("out_dir")
         self.weights = []
-        self.weightsL2 = []
-        self.items_to_save = {"gaplength"             : {"bins": 100, "bounds": [0, 500]},
-                              "zenith"                : {"bins": 20,  "bounds": [0, 1.7]},
-                              "prodz"                 : {"bins": 20,  "bounds": [-800, 800]},
-                              "decayz"                : {"bins": 20,  "bounds": [-800, 800]},
+        self.items_to_save = {
+                            #   "gaplength"             : {"bins": 100, "bounds": [0, 500]},
+                            #   "zenith"                : {"bins": 20,  "bounds": [0, 1.7]},
+                            #   "prodz"                 : {"bins": 20,  "bounds": [-800, 800]},
+                            #   "decayz"                : {"bins": 20,  "bounds": [-800, 800]},
                               "Edeposited"            : {"bins": 100, "bounds": [0, 1000]},
                               "totalInitialE"         : {"bins": 100, "bounds": [0, 20000]},
                               "totalMCPulseCharge"    : {"bins": 100, "bounds": [0,4000]},
@@ -71,7 +145,7 @@ class HistogramLLPs(icetray.I3Module):
                               
     def InitializeHistograms(self):
         for key, val in self.items_to_save.items():
-            self.items_to_save[key]["histogramdictionary"] = {"trigger": [], "L2": []} # create lists to hold values
+            self.items_to_save[key]["histogramdictionary"] = {"hist": []} # create lists to hold values
             if "bins" not in self.items_to_save[key]:
                 self.items_to_save[key]["bins"] = 50
             if "bounds" not in self.items_to_save[key]:
@@ -85,14 +159,14 @@ class HistogramLLPs(icetray.I3Module):
             weight = 1
         # fill histogram
         self.weights.append( weight )
-        self.SaveInfo(frame, frame["LLPInfo"]["length"], self.items_to_save["gaplength"]["histogramdictionary"])
-        self.SaveInfo(frame, frame["LLPInfo"]["prod_z"], self.items_to_save["prodz"]["histogramdictionary"])
-        self.SaveInfo(frame, frame["LLPInfo"]["prod_z"]-frame["LLPInfo"]["length"]*np.cos(frame["LLPInfo"]["zenith"]), self.items_to_save["decayz"]["histogramdictionary"])
-        self.SaveInfo(frame, frame["I3MCTree_preMuonProp"].get_head().dir.zenith, self.items_to_save["zenith"]["histogramdictionary"])
-        self.SaveInfo(frame, self.ComputeDepositedEnergy(frame), self.items_to_save["Edeposited"]["histogramdictionary"])
-        self.SaveInfo(frame, self.ComputeTotalEnergyAtBoundary(frame), self.items_to_save["totalInitialE"]["histogramdictionary"])
-        self.SaveInfo(frame, self.ComputeTotalMCPulseCharge(frame), self.items_to_save["totalMCPulseCharge"]["histogramdictionary"])
-        self.SaveInfo(frame, self.ComputeTotalDOMHits(frame), self.items_to_save["totalDOMHits"]["histogramdictionary"])
+        # self.AppendHist(frame, frame["LLPInfo"]["length"], self.items_to_save["gaplength"]["histogramdictionary"])
+        # self.AppendHist(frame, frame["LLPInfo"]["prod_z"], self.items_to_save["prodz"]["histogramdictionary"])
+        # self.AppendHist(frame, frame["LLPInfo"]["prod_z"]-frame["LLPInfo"]["length"]*np.cos(frame["LLPInfo"]["zenith"]), self.items_to_save["decayz"]["histogramdictionary"])
+        # self.AppendHist(frame, frame["I3MCTree_preMuonProp"].get_head().dir.zenith, self.items_to_save["zenith"]["histogramdictionary"])
+        self.AppendHist(frame, self.ComputeDepositedEnergy(frame), self.items_to_save["Edeposited"]["histogramdictionary"])
+        self.AppendHist(frame, self.ComputeTotalEnergyAtBoundary(frame), self.items_to_save["totalInitialE"]["histogramdictionary"])
+        self.AppendHist(frame, self.ComputeTotalMCPulseCharge(frame), self.items_to_save["totalMCPulseCharge"]["histogramdictionary"])
+        self.AppendHist(frame, self.ComputeTotalDOMHits(frame), self.items_to_save["totalDOMHits"]["histogramdictionary"])
         
         self.PushFrame(frame)
         
@@ -122,11 +196,22 @@ class HistogramLLPs(icetray.I3Module):
     def ComputeTotalEnergyAtBoundary(self, frame):
         totalE = 0
         for p in frame["I3MCTree_preMuonProp"].children(frame["I3MCTree_preMuonProp"].get_head()):
-            totalE += p.energy
+            totalE += p.enself.sig_path = self.AddParameter("sig_path", "sig_path", "")ergy
         return totalE
 
-    def SaveInfo(self, frame, frameitem, listdictionary):
-        listdictionary["trigger"].append(frameitem)
+    def AppendHist(self, frame, frameitem, listdictionary):
+        listdictionary["hist"].append(frameitem)
+    
+    def SaveHist(self):
+        for key, val in self.items_to_save.items():
+            current_sub_dict = self.items_to_save[key]
+            current_sub_dict["histogramdictionary"]["hist"]
+
+class Stack(icetray.I3Module):
+    def __init__(self,ctx):
+        icetray.I3Module.__init__(self,ctx)
+        self.outdir = self.AddParameter("out_dir", "out_dir", "")
+        self.hist_list = self.AddParameter("hist_list", "hist_list", "")
 
     def Finish(self):
         print("Total event rate trigger:", sum(self.weights))
@@ -141,14 +226,26 @@ class HistogramLLPs(icetray.I3Module):
             plt.yscale("log")
             plt.ylabel("Event Rate [Hz]")
             plt.title(key)
-            plt.savefig(self.folder_path + key +"_histogram.png")
+            plt.savefig(self.out_dir + key +"_histogram.png")
+
+
+if __name__ == "__main__":
+  parser = argparse.ArgumentParser()
+  parser.add_argument("sig_path", nargs="+")
+  parser.add_argument("--weight", type=float, required=False)
+  args = parser.parse_args()
+
+  data_with_weight, data_with_ene = create_data_structure(args)
 
 
 tray = I3Tray()
-sig_path="/mnt/scratch/parrishv/samples_052724/sig/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628/"
-#bkg_path
-folder_path="/mnt/home/parrishv/mount/icecube/dnn/var_test/plots/"
+# sig_path="/mnt/scratch/parrishv/samples_052724/sig/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628/"
+sig_path="/data/user/axelpo/LLP-data/"
+# bkg_path="/data/sim/IceCube/2020/generated/CORSIKA-in-ice/20904/"
+GCD_path= "/data/user/axelpo/LLP-at-IceCube/dark-leptonic-scalar-simulation/resources/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz"
 
-tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"LLPSim*/*.gz")))
-tray.Add(HistogramLLPs, folder_path = folder_path, GCDFile = "/mnt/scratch/parrishv/samples_052724/sig/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz")
+out_dir="plots/"
+
+
+tray.Add(Stack, sig_path = sig_path,)
 tray.Execute()

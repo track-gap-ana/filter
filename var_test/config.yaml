@@ -1,0 +1,12 @@
+---
+sig: 
+  DLS : DarkLeptonicScalar*
+  # DLS No LLP : NO_LLP*
+
+energy: 
+  1e4_1e7: 10 TeV to 10000 TeV 
+  1e3_1e6: 1 TeV to 1000 TeV
+  1e2_2e5: 100 GeV to 200 TeV
+  1e2_1e4: 100 GeV to 10 TeV
+  1e2_1e3: 100 GeV to 1 Tev
+
