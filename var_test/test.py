@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 import icecube
-from icecube import icetray, dataio, dataclasses
+from icecube import icetray, dataio, dataclasses, MuonGun
 from I3Tray import I3Tray
 import glob
 from datetime import datetime
 import matplotlib.pyplot as plt
-from icecube import MuonGun
 import numpy as np
 from pathlib import Path
 import argparse
 import pandas as pd
 import re
+import logging
 
-class Stack(self):
-    # def __init__(self):
+class Stack(object):
+    def __init__(self):
+        pass
 
     def xsec_weight():
         """ Calculates CORSIKA weights in tray and applies them to appended histogram
@@ -22,7 +23,26 @@ class Stack(self):
 
         Useage: to be used in create_hist_struct passed to the bkg strcture
         """
-    def create_hist_struct(fileName=None, color=None, args=None):
+    def parseLegend(fileName):
+        mass_match = re.search(r".mass-(\d+)", fileName)
+        mass_match = f"{float(mass_match.group(1))} GeV"
+        
+        eps = re.search(r"eps(-?\d+e-?\d+)", fileName)
+        eps = f" {float(eps.group(1))} eps"
+
+        nevents = re.search(r"\.nevents-(\d+)", fileName)
+        nevents = f" {float(nevents.group(1))} events"
+
+        ene = re.search(r'\d+e\d+_\d+e\d+', fileName)
+        ene = f" {ene.group(0)} ene"
+
+        gap = re.search(r"\_gap_(\d+)", fileName)
+        gap = f" {float(gap.group(1))} m"
+
+        legend = mass_match+eps+nevents+ene+gap
+        return legend
+
+    def create_hist_struct(self,fileName=None, color=None, args=None):
         """Creates two data structures containing mass, epsilon, color, gap length, and either weight or ene.
 
         Args:
@@ -32,41 +52,42 @@ class Stack(self):
             Three (two sig + 1 bkg) structures containing mass, epsilon, color, gap length and either weight or ene.
         """
 
+        histAttri = pd.DataFrame(data= 
+                                    {
+                                    'legend': None,
+                                    'color' : None,
+                                    'weight' : None,
+                                    }
+                                )
 
         if args.withbkg is not None:
-            bkg = {
-                "legend" : "CORSIKA",
-                "color" : "#d55e00",
-                # "weight" : weight
-                "hist" : [],
-                "var and bins" :{}
-            }
+            histAttri['legend'] = "CORSIKA",
+            histAttri['color'] =  "#d55e00",
+            # histAttri['weight'] = weight
+            
         else:
-            sig_with_weight = []
-            sig_with_ene = []
-            match = re.match(r"DarkLeptonicScalar\.mass-(?P<mass>\d+)\.eps-(?P<epsilon>[0-9e\-]+)\.(?P<type>nevents|ene)_(?P<value>[0-9e\-]+)_gap_(?P<gap>\d+)\_", fileName)
-            if args.weight is not None:
-                sig_with_weight.append({
-                    "legend" : f"{float(match.group("mass"))}GeV {float(match.group("epsilon"))} eps {int(match.group("gap"))}m ",
-                    # "weight": float(match.group("value")),
-                    "color": color,
-                    "hist" : [],
-                    "var and bins" :{}
-                })
-            else:
-                sig_with_ene.append({
-                    "legend" : f"{float(match.group("mass"))}GeV {float(match.group("epsilon"))} eps {int(match.group("gap"))}m {float(match.group("value"))} ene ",
-                    "color": color,
-                    "hist" : [],
-                    "var and bins" :{}
-                })
+            
+            # add in when weight things for signal sample have been figured 
+            # if args.weight is not None:
+            #     histAttri['legend'] =  f"{float(match.group("mass"))}GeV {float(match.group("epsilon"))} eps {int(match.group("gap"))}m"
+            #     # histAttri["weight"] = float(match.group("value")),
+            # else:
+            
+            if fileName is not None: 
+                histAttri["legend"] = self.parseLegend(fileName)
+            else: 
+                logging.warning('No files found')
+            
+            histAttri["color"] = color
                             
-        return pd.DataFrame(sig_with_weight), pd.DataFrame(sig_with_ene), pd.DataFrame(bkg)
+        return histAttri.T()
             
     def makeHist(self,args):
         # make 1 bkg hist
-        _,bkgAttri = self.create_hist_struct()
-        tray.Add(HistogramLLPs, histAttri=bkgAttri , out_dir = args.outdir GCDFile = GCD_path)
+        if args.withbkg is not None: 
+            _,bkgAttri = self.create_hist_struct()
+            tray = I3Tray()
+            tray.Add(HistogramLLPs, histAttri=bkgAttri , out_dir = args.outdir, GCDFile = GCD_path)
         
         colors = [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5", "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
         
@@ -74,9 +95,11 @@ class Stack(self):
 
         for (sig, color) in zip(args.sigs, colors):
             sigAttri,_= self.create_hist_struct(fileName=sig, color=color)
-            
+            tray = I3Tray()
             tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"LLPSim*/*.gz")))
-            tray.Add(HistogramLLPs, histAttri=sigAttri , out_dir = args.outdir GCDFile = GCD_path)
+            tray.Add(HistogramLLPs, histAttri=sigAttri , out_dir = args.outdir, GCDFile = GCD_path)
+            tray.Execute()
+
         
         # Stack call here
 
@@ -123,17 +146,19 @@ class HistogramLLPs(icetray.I3Module):
     def Configure(self): 
         self.out_dir = self.GetParameter("out_dir")
         self.weights = []
-        self.items_to_save = {
+        hist_data = {
                             #   "gaplength"             : {"bins": 100, "bounds": [0, 500]},
                             #   "zenith"                : {"bins": 20,  "bounds": [0, 1.7]},
                             #   "prodz"                 : {"bins": 20,  "bounds": [-800, 800]},
                             #   "decayz"                : {"bins": 20,  "bounds": [-800, 800]},
-                              "Edeposited"            : {"bins": 100, "bounds": [0, 1000]},
-                              "totalInitialE"         : {"bins": 100, "bounds": [0, 20000]},
-                              "totalMCPulseCharge"    : {"bins": 100, "bounds": [0,4000]},
-                              "totalDOMHits"          : {"bins": 100, "bounds": [0,2500]},
+                              "Edeposited"            : [100, 0, 1000],
+                              "totalInitialE"         : [100, 0, 20000],
+                              "totalMCPulseCharge"    : [100, 0, 4000],
+                              "totalDOMHits"          : [100, 0, 2500],
 
                              }
+        # produce
+        self.items_to_save = pd.DataFrame(hist_data, index =['bins', 'min', 'max'] )
         self.InitializeHistograms()
         
         # create surface for detector volume
@@ -143,14 +168,19 @@ class HistogramLLPs(icetray.I3Module):
         else:
             self.surface = MuonGun.Cylinder(1000,500) # approximate detector volume
                               
-    def InitializeHistograms(self):
-        for key, val in self.items_to_save.items():
-            self.items_to_save[key]["histogramdictionary"] = {"hist": []} # create lists to hold values
-            if "bins" not in self.items_to_save[key]:
-                self.items_to_save[key]["bins"] = 50
-            if "bounds" not in self.items_to_save[key]:
-                self.items_to_save[key]["bounds"] = [-10, 10]
-        
+    # def AddHistAttri(self):
+    #     for columnName, columnData in self.items_to_save.iteritems():
+            
+    #         self.items_to_save = self.items_to_save[columnName].append(self.histAttr)
+            
+            # if "bins" not in self.items_to_save[key]:Stack
+            #     self.items_to_save[key]["bins"] = 50
+            # if "bounds" not in self.items_to_save[key]:
+            #     self.items_to_save[key]["bounds"] = [-10, 10]
+
+    def AppendHist(self, columnName, frameitem):
+        self.items_to_save = self.items_to_save[columnName].append({[columnName] : frameitem}, ignore_index = True)
+
     def DAQ(self, frame):
         # which weight?
         if "muongun_weights" in frame:
@@ -163,10 +193,12 @@ class HistogramLLPs(icetray.I3Module):
         # self.AppendHist(frame, frame["LLPInfo"]["prod_z"], self.items_to_save["prodz"]["histogramdictionary"])
         # self.AppendHist(frame, frame["LLPInfo"]["prod_z"]-frame["LLPInfo"]["length"]*np.cos(frame["LLPInfo"]["zenith"]), self.items_to_save["decayz"]["histogramdictionary"])
         # self.AppendHist(frame, frame["I3MCTree_preMuonProp"].get_head().dir.zenith, self.items_to_save["zenith"]["histogramdictionary"])
-        self.AppendHist(frame, self.ComputeDepositedEnergy(frame), self.items_to_save["Edeposited"]["histogramdictionary"])
-        self.AppendHist(frame, self.ComputeTotalEnergyAtBoundary(frame), self.items_to_save["totalInitialE"]["histogramdictionary"])
-        self.AppendHist(frame, self.ComputeTotalMCPulseCharge(frame), self.items_to_save["totalMCPulseCharge"]["histogramdictionary"])
-        self.AppendHist(frame, self.ComputeTotalDOMHits(frame), self.items_to_save["totalDOMHits"]["histogramdictionary"])
+        self.AppendHist(columnName = 'Edeposited', frameitem= self.ComputeDepositedEnergy(frame))
+        self.AppendHist(columnName = "Edeposited", frameitem = self.ComputeDepositedEnergy(frame))
+        self.AppendHist(columnName = "totalInitialE", frameitem = self.ComputeTotalEnergyAtBoundary(frame))
+        self.AppendHist(columnName = "totalMCPulseCharge", frameitem = self.ComputeTotalMCPulseCharge(frame))
+        self.AppendHist(columnName = "totalDOMHits", frameitem = self.ComputeTotalDOMHits(frame))
+    
         
         self.PushFrame(frame)
         
@@ -196,56 +228,53 @@ class HistogramLLPs(icetray.I3Module):
     def ComputeTotalEnergyAtBoundary(self, frame):
         totalE = 0
         for p in frame["I3MCTree_preMuonProp"].children(frame["I3MCTree_preMuonProp"].get_head()):
-            totalE += p.enself.sig_path = self.AddParameter("sig_path", "sig_path", "")ergy
+            totalE += p.energy
         return totalE
-
-    def AppendHist(self, frame, frameitem, listdictionary):
-        listdictionary["hist"].append(frameitem)
     
     def SaveHist(self):
-        for key, val in self.items_to_save.items():
-            current_sub_dict = self.items_to_save[key]
-            current_sub_dict["histogramdictionary"]["hist"]
+        for columnName, columnData in self.items_to_save.iteritems():
+            # add hist attrib to dataframe at top 
+            df = self.items_to_save[columnName] 
+            df = df.concat(self.histAttr, df).reset_index(drop=True)
+            # Create an HDF5 file
+            df.to_hdf(f"{self.histAttri['legend']}_{columnName}.hdf5", key = 'df', mode = w)
+            
 
-class Stack(icetray.I3Module):
-    def __init__(self,ctx):
-        icetray.I3Module.__init__(self,ctx)
-        self.outdir = self.AddParameter("out_dir", "out_dir", "")
-        self.hist_list = self.AddParameter("hist_list", "hist_list", "")
+# class Plot(icetray.I3Module):
+#     def __init__(self,ctx):
+#         icetray.I3Module.__init__(self,ctx)
+#         self.outdir = self.AddParameter("out_dir", "out_dir", "")
+#         self.hist_list = self.AddParameter("hist_list", "hist_list", "")
 
-    def Finish(self):
-        print("Total event rate trigger:", sum(self.weights))
-        # plot histograms
-        for key, val in self.items_to_save.items():
-            current_sub_dict = self.items_to_save[key]
-            print('In this iteration:  ', key)
-            plt.figure()
-            plt.hist(current_sub_dict["histogramdictionary"]["trigger"], weights = self.weights, bins = current_sub_dict["bins"], range = current_sub_dict["bounds"], alpha = 0.3, color = "blue", label = "trigger")
-            plt.hist(current_sub_dict["histogramdictionary"]["L2"], weights = self.weightsL2, bins = current_sub_dict["bins"], range = current_sub_dict["bounds"], alpha = 0.3, color = "red", label = "L2")
-            plt.legend()
-            plt.yscale("log")
-            plt.ylabel("Event Rate [Hz]")
-            plt.title(key)
-            plt.savefig(self.out_dir + key +"_histogram.png")
+#     def Finish(self):
+#         print("Total event rate trigger:", sum(self.weights))
+#         # plot histograms
+#         for key, val in self.items_to_save.items():
+#             current_sub_dict = self.items_to_save[key]
+#             print('In this iteration:  ', key)
+#             plt.figure()
+#             # plt.hist(current_sub_dict["histogramdictionary"]["trigger"], weights = self.weights, bins = current_sub_dict["bins"], range = current_sub_dict["bounds"], alpha = 0.3, color = "blue", label = "trigger")
+#             # plt.hist(current_sub_dict["histogramdictionary"]["L2"], weights = self.weightsL2, bins = current_sub_dict["bins"], range = current_sub_dict["bounds"], alpha = 0.3, color = "red", label = "L2")
+#             plt.legend()
+#             plt.yscale("log")
+#             plt.ylabel("Event Rate [Hz]")
+#             plt.title(key)
+#             plt.savefig(self.out_dir + key +"_histogram.png")
 
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("sig_path", nargs="+")
-  parser.add_argument("--weight", type=float, required=False)
+  parser.add_argument("--sig_path", "-s", default="/data/user/axelpo/LLP-data/", required=False)
+  parser.add_argument("--weight", "-w", type=float, required=False)
+  parser.add_argument('--outdir', "-o", default="outdir/")
+  parser.add_argument('--withbkg', "-b", action="store_true")
   args = parser.parse_args()
+  stack = Stack()
+  stack.makeHist(args)
 
-  data_with_weight, data_with_ene = create_data_structure(args)
 
 
-tray = I3Tray()
 # sig_path="/mnt/scratch/parrishv/samples_052724/sig/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628/"
-sig_path="/data/user/axelpo/LLP-data/"
 # bkg_path="/data/sim/IceCube/2020/generated/CORSIKA-in-ice/20904/"
 GCD_path= "/data/user/axelpo/LLP-at-IceCube/dark-leptonic-scalar-simulation/resources/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz"
 
-out_dir="plots/"
-
-
-tray.Add(Stack, sig_path = sig_path,)
-tray.Execute()
