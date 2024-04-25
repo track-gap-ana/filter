@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import icecube
 from icecube import icetray, dataio, dataclasses, MuonGun
-from I3Tray import I3Tray
+from icecube.icetray import I3Tray
 import glob
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -11,6 +11,7 @@ import argparse
 import pandas as pd
 import re
 import logging
+import os
 
 class Stack(object):
     def __init__(self):
@@ -23,7 +24,7 @@ class Stack(object):
 
         Useage: to be used in create_hist_struct passed to the bkg strcture
         """
-    def parseLegend(fileName):
+    def parseLegend(self,fileName):
         mass_match = re.search(r".mass-(\d+)", fileName)
         mass_match = f"{float(mass_match.group(1))} GeV"
         
@@ -37,12 +38,15 @@ class Stack(object):
         ene = f" {ene.group(0)} ene"
 
         gap = re.search(r"\_gap_(\d+)", fileName)
-        gap = f" {float(gap.group(1))} m"
+        if gap is not None: 
+            gap = f" {float(gap.group(1))} m"
+        else: 
+            gap = " 50 m"
 
         legend = mass_match+eps+nevents+ene+gap
         return legend
 
-    def create_hist_struct(self,fileName=None, color=None, args=None):
+    def create_hist_struct(self, args, fileName=None, color=None):
         """Creates two data structures containing mass, epsilon, color, gap length, and either weight or ene.
 
         Args:
@@ -57,10 +61,11 @@ class Stack(object):
                                     'legend': None,
                                     'color' : None,
                                     'weight' : None,
-                                    }
+                                    },
+                                index=[0]
                                 )
 
-        if args.withbkg is not None:
+        if args.withbkg is True:
             histAttri['legend'] = "CORSIKA",
             histAttri['color'] =  "#d55e00",
             # histAttri['weight'] = weight
@@ -74,36 +79,48 @@ class Stack(object):
             # else:
             
             if fileName is not None: 
+                print('file name', fileName)
+                legend = self.parseLegend(fileName)
+                print('legend', legend)
                 histAttri["legend"] = self.parseLegend(fileName)
             else: 
                 logging.warning('No files found')
             
             histAttri["color"] = color
                             
-        return histAttri.T()
+        return histAttri
             
     def makeHist(self,args):
         # make 1 bkg hist
-        if args.withbkg is not None: 
-            _,bkgAttri = self.create_hist_struct()
+        if args.withbkg is True: 
+            bkgAttri = self.create_hist_struct(args)
             tray = I3Tray()
-            tray.Add(HistogramLLPs, histAttri=bkgAttri , out_dir = args.outdir, GCDFile = GCD_path)
+            tray.Add(HistogramLLPs, histAttri=bkgAttri , out_dir = args.outdir, GCDFile = args.gcd_path)
         
         colors = [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5", "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
         
         # make all other hists
 
-        for (sig, color) in zip(args.sigs, colors):
-            sigAttri,_= self.create_hist_struct(fileName=sig, color=color)
-            tray = I3Tray()
-            tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"LLPSim*/*.gz")))
-            tray.Add(HistogramLLPs, histAttri=sigAttri , out_dir = args.outdir, GCDFile = GCD_path)
-            tray.Execute()
+        for (sig, color) in zip(os.listdir(args.sigs_path), colors):
+            sig_path = args.sigs_path+sig
+            if os.path.isdir(sig_path) == True:
+                print('sig path: ', sig_path)
+                print('sig name for legend', len(sig))
+                sigAttri= self.create_hist_struct(args=args,fileName=sig, color=color)
+                # print("sig atri",sigAttri)
+                tray = I3Tray()
+                tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz")))
+                tray.Add(HistogramLLPs, histAttri=sigAttri , out_dir = args.outdir, GCDFile = args.gcd_path)
+                tray.Execute()
+            else: 
+                pass
 
         
         # Stack call here
 
-
+class Geometry(object):
+    def __init__(self):
+        pass
     #Function to read the GCD file and make the extruded polygon which
     #defines the edge of the in-ice array
     def MakeSurface(gcdName, padding):
@@ -140,12 +157,13 @@ class HistogramLLPs(icetray.I3Module):
     def __init__(self,ctx):
         icetray.I3Module.__init__(self,ctx)
         self.AddParameter("out_dir", "out_dir", None)
-        self.AddParameter("histAttr", "histAttr")
+        self.AddParameter("histAttri", "histAttri", None)
         self.gcdFile = self.AddParameter("GCDFile", "GCDFile", "")
     
     def Configure(self): 
         self.out_dir = self.GetParameter("out_dir")
         self.weights = []
+        self.histAttri = self.GetParameter("histAttri")
         hist_data = {
                             #   "gaplength"             : {"bins": 100, "bounds": [0, 500]},
                             #   "zenith"                : {"bins": 20,  "bounds": [0, 1.7]},
@@ -159,27 +177,24 @@ class HistogramLLPs(icetray.I3Module):
                              }
         # produce
         self.items_to_save = pd.DataFrame(hist_data, index =['bins', 'min', 'max'] )
-        self.InitializeHistograms()
         
         # create surface for detector volume
         self.gcdFile = self.GetParameter("GCDFile")
         if self.gcdFile != "":
-            self.surface = MakeSurface(self.gcdFile, 0)
+            self.surface = Geometry.MakeSurface(self.gcdFile, 0)
         else:
             self.surface = MuonGun.Cylinder(1000,500) # approximate detector volume
                               
-    # def AddHistAttri(self):
-    #     for columnName, columnData in self.items_to_save.iteritems():
-            
-    #         self.items_to_save = self.items_to_save[columnName].append(self.histAttr)
-            
-            # if "bins" not in self.items_to_save[key]:Stack
-            #     self.items_to_save[key]["bins"] = 50
-            # if "bounds" not in self.items_to_save[key]:
-            #     self.items_to_save[key]["bounds"] = [-10, 10]
 
     def AppendHist(self, columnName, frameitem):
-        self.items_to_save = self.items_to_save[columnName].append({[columnName] : frameitem}, ignore_index = True)
+
+        self.items_to_save = (pd.concat([self.items_to_save[columnName], pd.DataFrame({columnName : frameitem}, index=[0])], ignore_index=True)
+                              .reindex(columns=self.items_to_save.columns)
+                              .fillna(0, downcast='infer')
+                              )
+        print(f"on {columnName}-------------------")
+        print(self.items_to_save)
+
 
     def DAQ(self, frame):
         # which weight?
@@ -235,7 +250,9 @@ class HistogramLLPs(icetray.I3Module):
         for columnName, columnData in self.items_to_save.iteritems():
             # add hist attrib to dataframe at top 
             df = self.items_to_save[columnName] 
-            df = df.concat(self.histAttr, df).reset_index(drop=True)
+            df = df.concat(self.histAttri, df).reset_index(drop=True)
+            print(f"on {columnName}-------------------")
+            print(df)
             # Create an HDF5 file
             df.to_hdf(f"{self.histAttri['legend']}_{columnName}.hdf5", key = 'df', mode = w)
             
@@ -264,7 +281,8 @@ class HistogramLLPs(icetray.I3Module):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("--sig_path", "-s", default="/data/user/axelpo/LLP-data/", required=False)
+  parser.add_argument("--sigs_path", "-s", default="/data/user/axelpo/LLP-data/", required=False)
+  parser.add_argument("--gcd_path", '-g', default="/data/user/axelpo/LLP-at-IceCube/dark-leptonic-scalar-simulation/resources/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz", required=False)
   parser.add_argument("--weight", "-w", type=float, required=False)
   parser.add_argument('--outdir', "-o", default="outdir/")
   parser.add_argument('--withbkg', "-b", action="store_true")
@@ -274,7 +292,6 @@ if __name__ == "__main__":
 
 
 
-# sig_path="/mnt/scratch/parrishv/samples_052724/sig/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628/"
+# sigs_path="/mnt/scratch/parrishv/samples_052724/sig/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628/"
 # bkg_path="/data/sim/IceCube/2020/generated/CORSIKA-in-ice/20904/"
-GCD_path= "/data/user/axelpo/LLP-at-IceCube/dark-leptonic-scalar-simulation/resources/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz"
 
