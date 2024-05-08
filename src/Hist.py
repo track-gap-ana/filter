@@ -15,7 +15,7 @@ import trackgapana as Make
 
 logging.basicConfig(level=logging.DEBUG)
 
-class Hist(object):
+class Stack(object):
     def __init__(self):
         pass
 

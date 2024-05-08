@@ -25,23 +25,36 @@ Driver script for plotting and histograming
 class Make(object):
     def __init__(self):
         pass
-
-    def makeHist(self, args):
-        if args.redo is True:
-            stack = Hist.Hist()
+    
+    def makeStackHist(self, args):
+        # Ensuring that the user wants to replace histograms and checks that the outdir does not contain histograms
+        if args.redo is True and ("*.csv" in list(glob.glob(args.outdir))):
+            stack = Hist.Stack()
             stack.makeHist(args)
         else:
-            logging.info("Outdir is not empty")
+            logging.error("Outdir is not empty")
             pass
+    
+    # def makeYieldHist(self, args):
+    #     if args.redo is True and ("yield.csv" in list(glob.glob(args.outdir))):
+    #         # Redo yields hist 
+    #     else:
+    #         logging.error("Outdir is not empty")
+    #         pass
         
-    def plot(self):
+    def plotStack(self):
         plot = Plot.Stack(histpath=args.outdir, config_var=args.config_var)
         plot.processHist()
 
+
     def run(self,args):
         # if plot flag is used, plot
-        if args.hist: self.makeHist(args)
-        if args.plot: self.plot()
+        if args.type is "stack":
+            if args.hist: self.makeStackHist(args)
+            if args.plot: self.plotStack()
+        if args.type is "yield": 
+            if args.hist: self.makeYieldHist(args)
+            if args.plot: self.plotYield()
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -58,6 +71,10 @@ if __name__ == "__main__":
     parser.add_argument('--hist', action="store_true")
     parser.add_argument('--redo', '-r', action="store_true")
     parser.add_argument('--fast', '-f', action="store_true", help="Run with flag if you want to a small multiple signal sample set test")
+
+    # histo and plotting types
+    parser.add_argument('--type', 't', options=['stack', 'yield'], required=True)
+
     args = parser.parse_args()
 
     compile = Make()
