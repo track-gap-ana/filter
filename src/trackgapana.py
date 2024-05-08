@@ -17,6 +17,7 @@ import Plot
 import Hist
 
 """
+
 Driver script for plotting and histograming 
 
 """
@@ -45,8 +46,7 @@ class Make(object):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--sigs_path", "-sp", default=None, required=False, help="All signal simulation")
-    parser.add_argument("--test_sig", "-ts", default="/data/user/axelpo/LLP-data/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628", required=False, help="A single filelist from sig simulation sample")
+    parser.add_argument("--sigs_path", "-sp", default="/data/user/axelpo/LLP-data/", required=False, help="All signal simulation")
     parser.add_argument("--gcd_path", '-g', default="/data/user/axelpo/LLP-at-IceCube/dark-leptonic-scalar-simulation/resources/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz", required=False)    
     parser.add_argument('--config-var', '-cv', default = "configs/variables.yaml" ,help="config yaml variable file")
     parser.add_argument("--weight", "-w", type=float, required=False)

@@ -17,7 +17,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 class Hist(object):
     def __init__(self):
-        
         pass
 
     def xsec_weight():
@@ -87,6 +86,7 @@ class Hist(object):
         
         # create and transform it to df
         return d_histAttri
+
     
     def makeHist(self,args):
         logging.info("Making histograms")
@@ -104,25 +104,18 @@ class Hist(object):
                 sig_path = args.sigs_path+sig
                 if os.path.isdir(sig_path) == True:
                     logging.info(f"On sample: {sig}")
+                    filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz"))
+                    if args.fast is True: 
+                        filenamelist = filenamelist[:1]
+                        print('filnamelist', filenamelist)
                     sigAttri= self.create_hist_struct(args=args,fileName=sig, color=color)
                     tray = I3Tray()
-                    if args.fast is True: 
-                        tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz"))[:1])
-                    else :
-                        tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz")))
+                    tray.Add("I3Reader", filenamelist= filenamelist)
                     tray.Add(Stack, d_histAttri=sigAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
                     tray.Execute()
                 
                 else: 
                     pass
-        else:
-            sigAttri= self.create_hist_struct(args=args,fileName=args.test_sig, color="#003f5c")
-            tray = I3Tray()
-            fileList = list(glob.glob(args.test_sig+"/LLPSim*/*.gz"))
-            tray.Add("I3Reader", filenamelist= list(glob.glob(args.test_sig+"/LLPSim*/*.gz"))[:2])
-            tray.Add(Stack, d_histAttri=sigAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
-            tray.Execute()
-
         
 class Geometry(object):
     def __init__(self):
