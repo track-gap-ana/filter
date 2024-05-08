@@ -3,9 +3,7 @@ import icecube
 from icecube import icetray, dataio, dataclasses, MuonGun
 from icecube.icetray import I3Tray
 import glob
-from datetime import datetime
 import matplotlib.pyplot as plt
-import numpy as np
 from pathlib import Path
 import argparse
 import pandas as pd
@@ -13,10 +11,13 @@ import re
 import logging
 import os
 import yaml
-import Plot
+import trackgapana as Make
+
+logging.basicConfig(level=logging.DEBUG)
 
 class Hist(object):
     def __init__(self):
+        
         pass
 
     def xsec_weight():
@@ -57,7 +58,6 @@ class Hist(object):
         Returns:
             Three (two sig + 1 bkg) structures containing mass, epsilon, color, gap length and either weight or ene.
         """
-
         d_histAttri =  {
                         'legend': None,
                         'color' : None,
@@ -72,13 +72,12 @@ class Hist(object):
         else:
             
             # add in when weight things for signal sample have been figured 
-            # if args.weight is not None:
+            # if args.weight'] is not None:
             #     d_histAttri['legend'] =  f"{float(match.group("mass"))}GeV {float(match.group("epsilon"))} eps {int(match.group("gap"))}m"
             #     # d_histAttri["weight"] = float(match.group("value")),
             # else:
             
             if fileName is not None: 
-                logging.info("on sample: ",fileName)
                 legend = self.parseLegend(fileName)
                 d_histAttri["legend"] = self.parseLegend(fileName)
             else: 
@@ -88,13 +87,14 @@ class Hist(object):
         
         # create and transform it to df
         return d_histAttri
-            
+    
     def makeHist(self,args):
+        logging.info("Making histograms")
         # make 1 bkg hist
         if args.withbkg is True: 
             bkgAttri = self.create_hist_struct(args)
             tray = I3Tray()
-            tray.Add(Stack, d_histAttri=bkgAttri , out_dir = args.outdir, GCDFile = args.gcd_path)
+            tray.Add(Stack, d_histAttri=bkgAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
         
         colors = [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5", "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
         
@@ -103,11 +103,16 @@ class Hist(object):
             for (sig, color) in zip(os.listdir(args.sigs_path), colors):
                 sig_path = args.sigs_path+sig
                 if os.path.isdir(sig_path) == True:
+                    logging.info(f"On sample: {sig}")
                     sigAttri= self.create_hist_struct(args=args,fileName=sig, color=color)
                     tray = I3Tray()
-                    tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz")))
-                    tray.Add(Stack, d_histAttri=sigAttri , out_dir = args.outdir, GCDFile = args.gcd_path)
+                    if args.fast is True: 
+                        tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz"))[:1])
+                    else :
+                        tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz")))
+                    tray.Add(Stack, d_histAttri=sigAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
                     tray.Execute()
+                
                 else: 
                     pass
         else:
@@ -115,16 +120,8 @@ class Hist(object):
             tray = I3Tray()
             fileList = list(glob.glob(args.test_sig+"/LLPSim*/*.gz"))
             tray.Add("I3Reader", filenamelist= list(glob.glob(args.test_sig+"/LLPSim*/*.gz"))[:2])
-            tray.Add(Stack, d_histAttri=sigAttri , out_dir = args.outdir, GCDFile = args.gcd_path)
+            tray.Add(Stack, d_histAttri=sigAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
             tray.Execute()
-        
-        # if plot flag is used, plot
-        if args.plot: self.plot()
-
-    def plot(self):
-        plot = Plot.Stack(histpath=args.outdir, config_var=args.config_var)
-        plot.processHist()
-
 
         
 class Geometry(object):
@@ -167,16 +164,17 @@ class Stack(icetray.I3Module):
         icetray.I3Module.__init__(self,ctx)
         self.AddParameter("out_dir", "out_dir", None)
         self.AddParameter("d_histAttri", "d_histAttri", None)
+        self.AddParameter("config_var", "config_var", None)
         self.gcdFile = self.AddParameter("GCDFile", "GCDFile", "")
     
     def Configure(self): 
         self.out_dir = self.GetParameter("out_dir")
+        self.config_var = self.GetParameter("config_var")
         self.weights = []
 
         #Create dictionaries for stack histogram
-        with open(args.config_var, 'r') as f:
+        with open(self.config_var, 'r') as f:
             d_histVars = yaml.full_load(f)
-        print("var config \n", d_histVars)    
 
         # make a df hist out of it
         self.df_hist = pd.DataFrame(d_histVars, index =['bins', 'min', 'max'] )
@@ -257,33 +255,7 @@ class Stack(icetray.I3Module):
         # convert dictionaries to dataframes
         df_histData = pd.DataFrame(self.d_histData)        
         self.df_hist = self.df_hist._append(df_histData)
-        print('histogram: \n', self.df_hist)
         logging.info(f"Creating {self.df_hist.loc['legend'][0]}-------------------")
         # Create an HDF5 file
         outFile = self.df_hist.loc['legend'][0].replace(" ", "_")
-        logging.info('output file path:', f"{args.outdir}/{outFile}.hdf5")
-        self.df_hist.to_csv(f"{args.outdir}/{outFile}.csv")
-            
-
-
-
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--sigs_path", "-sp", default=None, required=False)
-  parser.add_argument("--test_sig", "-ts", default="/data/user/axelpo/LLP-data/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628", required=False)
-  parser.add_argument("--gcd_path", '-g', default="/data/user/axelpo/LLP-at-IceCube/dark-leptonic-scalar-simulation/resources/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz", required=False)
-  parser.add_argument("--weight", "-w", type=float, required=False)
-  parser.add_argument('--outdir', "-o", default="outdir")
-  parser.add_argument('--withbkg', "-b", action="store_true")
-  parser.add_argument('--plot', '-p', action="store_true")
-  parser.add_argument('--config-var', '-cv', default = "configs/variables.yaml" ,help="config yaml variable file")
-  args = parser.parse_args()
-  stack = Hist()
-  stack.makeHist(args)
-
-
-
-
-# sigs_path="/mnt/scratch/parrishv/samples_052724/sig/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628/"
-# bkg_path="/data/sim/IceCube/2020/generated/CORSIKA-in-ice/20904/"
-
+        self.df_hist.to_csv(f"{self.out_dir}/{outFile}.csv")
