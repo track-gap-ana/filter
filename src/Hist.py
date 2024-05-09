@@ -5,7 +5,6 @@ from icecube.icetray import I3Tray
 import glob
 import matplotlib.pyplot as plt
 from pathlib import Path
-import argparse
 import pandas as pd
 import re
 import logging
@@ -15,7 +14,7 @@ import trackgapana as Make
 
 logging.basicConfig(level=logging.DEBUG)
 
-class Stack(object):
+class Hist(object):
     def __init__(self):
         pass
 
@@ -92,30 +91,35 @@ class Stack(object):
         logging.info("Making histograms")
         # make 1 bkg hist
         if args.withbkg is True: 
+            logging.info("Background histograming")
+            filenamelist= list(glob.glob(args.bkg_path+"/*zst"))
             bkgAttri = self.create_hist_struct(args)
+            logging.debug(filenamelist)
             tray = I3Tray()
+            tray.Add("I3Reader", filenamelist= filenamelist)
             tray.Add(Stack, d_histAttri=bkgAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
-        
-        colors = [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5", "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
-        
-        # make all other hists
-        if args.sigs_path is not None:
-            for (sig, color) in zip(os.listdir(args.sigs_path), colors):
-                sig_path = args.sigs_path+sig
-                if os.path.isdir(sig_path) == True:
-                    logging.info(f"On sample: {sig}")
-                    filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz"))
-                    if args.fast is True: 
-                        filenamelist = filenamelist[:1]
-                        print('filnamelist', filenamelist)
-                    sigAttri= self.create_hist_struct(args=args,fileName=sig, color=color)
-                    tray = I3Tray()
-                    tray.Add("I3Reader", filenamelist= filenamelist)
-                    tray.Add(Stack, d_histAttri=sigAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
-                    tray.Execute()
-                
-                else: 
-                    pass
+            tray.Execute()
+        else:
+            colors = [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5", "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
+            # make all other hists
+            if args.sigs_path is not None:
+                for (sig, color) in zip(os.listdir(args.sigs_path), colors):
+                    sig_path = args.sigs_path+sig
+                    if os.path.isdir(sig_path) == True:
+                        logging.info(f"On sample: {sig}")
+                        filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz"))
+                        if args.fast is True: 
+                            filenamelist = filenamelist[:1]
+                            print('filnamelist', filenamelist)
+                        sigAttri= self.create_hist_struct(args=args,fileName=sig, color=color)
+                        tray = I3Tray()
+                        tray.Add("I3Reader", filenamelist= filenamelist)
+                        tray.Add(Stack, d_histAttri=sigAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
+                        tray.Execute()
+                    
+                    else: 
+                        pass
+
         
 class Geometry(object):
     def __init__(self):
@@ -210,14 +214,18 @@ class Stack(icetray.I3Module):
         self.AppendHist(varName = "totalInitialE", frameitem = self.ComputeTotalEnergyAtBoundary(frame))
         self.AppendHist(varName = "totalMCPulseCharge", frameitem = self.ComputeTotalMCPulseCharge(frame))
         self.AppendHist(varName = "totalDOMHits", frameitem = self.ComputeTotalDOMHits(frame))
-        
+
     
-        
         self.PushFrame(frame)
         
     def ComputeDepositedEnergy(self, frame):
         edep = 0
-        for track in MuonGun.Track.harvest(frame['I3MCTree'], frame['MMCTrackList']):
+
+        # Change name scheme between sig and bkg sim samples 
+        if 'I3MCTree' in frame: MCTree = 'I3MCTree'
+        else: MCTree = 'SignalI3MCTree'
+
+        for track in MuonGun.Track.harvest(frame[MCTree], frame['MMCTrackList']):
             # Find distance to entrance and exit from sampling volume
             intersections = self.surface.intersection(track.pos, track.dir)
             # Get the corresponding energies
@@ -249,6 +257,7 @@ class Stack(icetray.I3Module):
         df_histData = pd.DataFrame(self.d_histData)        
         self.df_hist = self.df_hist._append(df_histData)
         logging.info(f"Creating {self.df_hist.loc['legend'][0]}-------------------")
+        logging.debug(self.df_hist)
         # Create an HDF5 file
         outFile = self.df_hist.loc['legend'][0].replace(" ", "_")
         self.df_hist.to_csv(f"{self.out_dir}/{outFile}.csv")
