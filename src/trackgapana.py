@@ -1,18 +1,8 @@
 #!/usr/bin/env python
-import icecube
 from icecube import icetray, dataio, dataclasses, MuonGun
 from icecube.icetray import I3Tray
-import glob
-from datetime import datetime
-import matplotlib.pyplot as plt
-import numpy as np
-from pathlib import Path
 import argparse
-import pandas as pd
-import re
 import logging
-import os
-import yaml
 import Plot
 import Hist
 
@@ -21,6 +11,7 @@ import Hist
 Driver script for plotting and histograming 
 
 """
+logger = logging.getLogger(__name__)
 
 class Make(object):
     def __init__(self):
@@ -44,11 +35,13 @@ class Make(object):
         
     def plotStack(self):
         plot = Plot.Stack(histpath=args.outdir, config_var=args.config_var)
-        plot.processHist()
+        plot.processHist(nevents=args.nevents)
 
 
     def run(self,args):
         # if plot flag is used, plot
+        if args.verbose is True: logging.basicConfig(level=logging.DEBUG)
+        else: logging.basicConfig(level=logging.INFO)
         if args.type == "stack":
             if args.hist: self.makeStackHist(args)
             if args.plot: self.plotStack()
@@ -65,14 +58,15 @@ if __name__ == "__main__":
     parser.add_argument('--config-var', '-cv', default = "configs/variables.yaml" ,help="config yaml variable file")
     parser.add_argument("--weight", "-w", type=float, required=False)
     parser.add_argument('--outdir', "-o", default="outdir")
+    parser.add_argument('--nevents', '-n', help="Make hists with subset of events", required=False)
     
     #turn on or off
     parser.add_argument('--withbkg', "-B", action="store_true")
     parser.add_argument('--plot', '-P', action="store_true")
     parser.add_argument('--hist', '-H', action="store_true")
     parser.add_argument('--redo', '-R', action="store_true")
-    parser.add_argument('--fast', '-F', action="store_true", help="Run with flag if you want to a small multiple signal sample set test")
-
+    parser.add_argument('--verbose', '-v', action="store_true", help="Run with flag for debug logging")
+    parser.add_argument('--skim', '-s', help="first pass of new simulation")
     # histo and plotting types
     parser.add_argument('--type', '-t', choices=['stack', 'yield'], required=True)
 

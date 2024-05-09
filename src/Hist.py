@@ -11,20 +11,12 @@ import logging
 import os
 import yaml
 import trackgapana as Make
-
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class Hist(object):
     def __init__(self):
         pass
 
-    def xsec_weight():
-        """ Calculates CORSIKA weights in tray and applies them to appended histogram
-        
-        Returns: hdf5 weight keys
-
-        Useage: to be used in create_hist_struct passed to the bkg strcture
-        """
     def parseLegend(self,fileName):
         mass_match = re.search(r".mass-(\d+)", fileName)
         mass_match = f"{float(mass_match.group(1))} GeV"
@@ -47,9 +39,10 @@ class Hist(object):
         legend = mass_match+eps+nevents+ene+gap
         return legend
     
-    def readConfigs(self, args):
+    def readConfigs(self):
         with open(self.config_var, 'r') as f:
             d_histVars = yaml.full_load(f)
+        return d_histVars
 
     def create_hist_struct(self, args, fileName=None, color=None):
         """Creates two data structures containing mass, epsilon, color, gap length, and either weight or ene.
@@ -67,8 +60,8 @@ class Hist(object):
                         }
                       
         if args.withbkg is True:
-            d_histAttri['legend'] = "CORSIKA",
-            d_histAttri['color'] =  "#d55e00",
+            d_histAttri['legend'] = "CORSIKA"
+            d_histAttri['color'] =  "#d55e00"
             # d_histAttri['weight'] = weight
             
         else:
@@ -91,13 +84,15 @@ class Hist(object):
         return d_histAttri
 
     def addTray(self, args, filenamelist, histAttri):
-        if args.fast is True: 
-            filenamelist = filenamelist[:1]
-            print('filnamelist', filenamelist)
         tray = I3Tray()
+        if args.nfiles is not None: filenamelist = filenamelist[:args.nfiles]
+        
+        if args.nevents is not None: frames = args.nevents
+        else: frames = float("inf")
+        
         tray.Add("I3Reader", filenamelist= filenamelist)
         tray.Add(Stack, d_histAttri=histAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
-        tray.Execute()
+        tray.Execute(frames)
 
     def makeHist(self,args):
         logging.info("Making histograms")
@@ -106,12 +101,12 @@ class Hist(object):
             logging.info("Background histograming")
             filenamelist= list(glob.glob(args.bkg_path+"/*zst"))
             bkgAttri = self.create_hist_struct(args)
-            logging.debug(filenamelist)
+            # logging.debug(filenamelist)
             self.addTray(args, filenamelist = filenamelist, histAttri= bkgAttri)
         else:
-            colors = [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5", "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
             # make all other hists
             if args.sigs_path is not None:
+                colors = self.readConfigs()["attr"]["colorblind"]
                 for (sig, color) in zip(os.listdir(args.sigs_path), colors):
                     sig_path = args.sigs_path+sig
                     if os.path.isdir(sig_path) == True:
@@ -175,7 +170,7 @@ class Stack(icetray.I3Module):
         #Create dictionaries for stack histogram
         with open(self.config_var, 'r') as f:
             d_histVars = yaml.full_load(f)
-
+            d_histVars = d_histVars["vars"]
         # make a df hist out of it
         self.df_hist = pd.DataFrame(d_histVars, index =['bins', 'min', 'max'] )
 
@@ -264,3 +259,7 @@ class Stack(icetray.I3Module):
         # Create an HDF5 file
         outFile = self.df_hist.loc['legend'][0].replace(" ", "_")
         self.df_hist.to_csv(f"{self.out_dir}/{outFile}.csv")
+        if "CORSIKA" in self.df_hist.loc['legend'][0]:
+            with pd.HDFStore(f"forbkgweighting.hdf5", mode = 'w') as store:
+                for column in df_histData.columns:
+                    store.put(column, df_histData[column]) 
