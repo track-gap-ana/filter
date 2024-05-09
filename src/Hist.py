@@ -46,6 +46,10 @@ class Hist(object):
 
         legend = mass_match+eps+nevents+ene+gap
         return legend
+    
+    def readConfigs(self, args):
+        with open(self.config_var, 'r') as f:
+            d_histVars = yaml.full_load(f)
 
     def create_hist_struct(self, args, fileName=None, color=None):
         """Creates two data structures containing mass, epsilon, color, gap length, and either weight or ene.
@@ -86,7 +90,15 @@ class Hist(object):
         # create and transform it to df
         return d_histAttri
 
-    
+    def addTray(self, args, filenamelist, histAttri):
+        if args.fast is True: 
+            filenamelist = filenamelist[:1]
+            print('filnamelist', filenamelist)
+        tray = I3Tray()
+        tray.Add("I3Reader", filenamelist= filenamelist)
+        tray.Add(Stack, d_histAttri=histAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
+        tray.Execute()
+
     def makeHist(self,args):
         logging.info("Making histograms")
         # make 1 bkg hist
@@ -95,10 +107,7 @@ class Hist(object):
             filenamelist= list(glob.glob(args.bkg_path+"/*zst"))
             bkgAttri = self.create_hist_struct(args)
             logging.debug(filenamelist)
-            tray = I3Tray()
-            tray.Add("I3Reader", filenamelist= filenamelist)
-            tray.Add(Stack, d_histAttri=bkgAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
-            tray.Execute()
+            self.addTray(args, filenamelist = filenamelist, histAttri= bkgAttri)
         else:
             colors = [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5", "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
             # make all other hists
@@ -108,14 +117,8 @@ class Hist(object):
                     if os.path.isdir(sig_path) == True:
                         logging.info(f"On sample: {sig}")
                         filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz"))
-                        if args.fast is True: 
-                            filenamelist = filenamelist[:1]
-                            print('filnamelist', filenamelist)
                         sigAttri= self.create_hist_struct(args=args,fileName=sig, color=color)
-                        tray = I3Tray()
-                        tray.Add("I3Reader", filenamelist= filenamelist)
-                        tray.Add(Stack, d_histAttri=sigAttri , out_dir = args.outdir, GCDFile = args.gcd_path, config_var=args.config_var)
-                        tray.Execute()
+                        self.addTray(args, filenamelist = filenamelist, histAttri = sigAttri)
                     
                     else: 
                         pass
