@@ -3,14 +3,13 @@ import icecube
 from icecube import icetray, dataio, dataclasses, MuonGun
 from icecube.icetray import I3Tray
 import glob
-import matplotlib.pyplot as plt
-from pathlib import Path
 import pandas as pd
 import re
 import logging
 import os
 import yaml
-import trackgapana as Make
+
+# set global logger
 logger = logging.getLogger(__name__)
 
 class Hist(object):
@@ -85,9 +84,11 @@ class Hist(object):
 
     def addTray(self, args, filenamelist, histAttri):
         tray = I3Tray()
-        if args.nfiles is not None: filenamelist = filenamelist[:args.nfiles]
+        # if args.nfiles is not None: 
+        #     nfiles = int(args.nfiles)  # Convert args.nfiles to an integer
+        #     filenamelist = filenamelist[:nfiles]
         
-        if args.nevents is not None: frames = args.nevents
+        if args.nevents is not None: frames = int(args.nevents)
         else: frames = float("inf")
         
         tray.Add("I3Reader", filenamelist= filenamelist)
@@ -254,12 +255,13 @@ class Stack(icetray.I3Module):
         # convert dictionaries to dataframes
         df_histData = pd.DataFrame(self.d_histData)        
         self.df_hist = self.df_hist._append(df_histData)
-        logging.info(f"Creating {self.df_hist.loc['legend'][0]}-------------------")
+        outFile = self.df_hist.loc['legend'][0].replace(" ", "_")
+        logging.info(f"Creating {outFile} histogram -------------------")
         logging.debug(self.df_hist)
-        # Create an HDF5 file
+        # Create an HDF5 file for background weighting
         outFile = self.df_hist.loc['legend'][0].replace(" ", "_")
         self.df_hist.to_csv(f"{self.out_dir}/{outFile}.csv")
-        if "CORSIKA" in self.df_hist.loc['legend'][0]:
-            with pd.HDFStore(f"forbkgweighting.hdf5", mode = 'w') as store:
+        if "CORSIKA" in str(outFile):
+            with pd.HDFStore(f"{self.out_dir}/forbkgweighting.hdf5", mode = 'w') as store:
                 for column in df_histData.columns:
                     store.put(column, df_histData[column]) 

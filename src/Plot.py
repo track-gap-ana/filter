@@ -43,8 +43,9 @@ class Stack():
                         hist_info = df[var]
                         hist = hist_info.iloc[6:].astype(float)
                         logging.info(f"Plotting sample: {hist_info.loc['legend']}")
-                        if "CORSIKA" in histfile: weight = Weight.Weight().bkgWeight(args)
-                        plt.hist(hist,bins=bins[0],range=tuple(bins[-2:]), color = hist_info.loc['color'], label = hist_info.loc['legend'], alpha=.5)
+                        if "CORSIKA" in histfile: weight = Weight.Weight().bkgWeight(args, f"{args.outdir}/forbkgweighting.hdf5")
+                        else: weight = None
+                        plt.hist(hist,bins=bins[0],range=tuple(bins[-2:]), color = hist_info.loc['color'], label = hist_info.loc['legend'], alpha=.5, weights=weight)
                 plt.legend(fontsize=6)
                 plt.savefig(self.histpath+'/plots/'+var)
             

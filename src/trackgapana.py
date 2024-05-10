@@ -3,7 +3,6 @@ from icecube import icetray, dataio, dataclasses, MuonGun
 from icecube.icetray import I3Tray
 import argparse
 import logging
-import Plot
 import Hist
 
 """
@@ -33,21 +32,26 @@ class Make(object):
     #         logging.error("Outdir is not empty")
     #         pass
         
-    def plotStack(self):
+    def plotStack(self, args):
+        import Plot
         plot = Plot.Stack(histpath=args.outdir, config_var=args.config_var)
-        plot.processHist(nevents=args.nevents)
+        plot.processHist(args=args)
 
 
     def run(self,args):
-        # if plot flag is used, plot
+        # set logging configs
         if args.verbose is True: logging.basicConfig(level=logging.DEBUG)
         else: logging.basicConfig(level=logging.INFO)
+        
+        # make stacks
         if args.type == "stack":
             if args.hist: self.makeStackHist(args)
-            if args.plot: self.plotStack()
+            if args.plot: self.plotStack(args)
+
+        # make yields
         if args.type == "yield": 
             if args.hist: self.makeYieldHist(args)
-            if args.plot: self.plotYield()
+            if args.plot: self.plotYield(args)
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -56,9 +60,9 @@ if __name__ == "__main__":
     parser.add_argument("--bkg_path", "-bp", default="/data/sim/IceCube/2020/generated/CORSIKA-in-ice/20904/0198000-0198999/detector/")
     parser.add_argument("--gcd_path", '-g', default="/data/user/axelpo/LLP-at-IceCube/dark-leptonic-scalar-simulation/resources/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz", required=False)    
     parser.add_argument('--config-var', '-cv', default = "configs/variables.yaml" ,help="config yaml variable file")
-    parser.add_argument("--weight", "-w", type=float, required=False)
     parser.add_argument('--outdir', "-o", default="outdir")
-    parser.add_argument('--nevents', '-n', help="Make hists with subset of events", required=False)
+    parser.add_argument('--nevents', '-nE', help="Make hists with subset of events (must be run with --nfiles)", required=False)
+    parser.add_argument('--nfiles', '-nF', help="Make hists with subset of files (can be run with --nevents)", required=False)
     
     #turn on or off
     parser.add_argument('--withbkg', "-B", action="store_true")
@@ -66,7 +70,6 @@ if __name__ == "__main__":
     parser.add_argument('--hist', '-H', action="store_true")
     parser.add_argument('--redo', '-R', action="store_true")
     parser.add_argument('--verbose', '-v', action="store_true", help="Run with flag for debug logging")
-    parser.add_argument('--skim', '-s', help="first pass of new simulation")
     # histo and plotting types
     parser.add_argument('--type', '-t', choices=['stack', 'yield'], required=True)
 

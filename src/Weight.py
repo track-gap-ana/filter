@@ -8,9 +8,6 @@ import pandas as pd
 import pylab as plt
 from pathlib import Path
 import glob
-from I3Tray import I3Tray
-from icecube import hdfwriter, simclasses
-
 import simweights
 
 class Weight(object):
