@@ -8,6 +8,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from icecube import MuonGun
 import numpy as np
+import argparse
 
 #Function to read the GCD file and make the extruded polygon which
 #defines the edge of the in-ice array
@@ -36,8 +37,10 @@ def MakeSurface(gcdName, padding):
             
         xyList.append(pos)
         i+=1
-    
-    return MuonGun.ExtrudedPolygon(xyList, padding) 
+    print("Finished loading DOMs... creating ExtrudedPolygon")
+    surface = MuonGun.ExtrudedPolygon(xyList, padding)
+    print("ExtrudedPolygon surface created.") 
+    return surface
 
 class HistogramLLPs(icetray.I3Module):
 
@@ -58,9 +61,11 @@ class HistogramLLPs(icetray.I3Module):
                               "totalInitialE"         : {"bins": 100, "bounds": [0, 20000]},
                               "totalMCPulseCharge"    : {"bins": 100, "bounds": [0,4000]},
                               "totalDOMHits"          : {"bins": 100, "bounds": [0,2500]},
+                              "prodAlongPath"         : {"bins": 100, "bounds": [0,1]},
 
                              }
         self.InitializeHistograms()
+        self.nevents = 0 # for counting
         
         # create surface for detector volume
         self.gcdFile = self.GetParameter("GCDFile")
@@ -93,7 +98,13 @@ class HistogramLLPs(icetray.I3Module):
         self.SaveInfo(frame, self.ComputeTotalEnergyAtBoundary(frame), self.items_to_save["totalInitialE"]["histogramdictionary"])
         self.SaveInfo(frame, self.ComputeTotalMCPulseCharge(frame), self.items_to_save["totalMCPulseCharge"]["histogramdictionary"])
         self.SaveInfo(frame, self.ComputeTotalDOMHits(frame), self.items_to_save["totalDOMHits"]["histogramdictionary"])
+        self.SaveInfo(frame, self.ComputeProdAlongPath(frame), self.items_to_save["prodAlongPath"]["histogramdictionary"])
         
+        # count
+        self.nevents += 1
+        if self.nevents % 5000 == 0:
+            print("Processed {} events".format(self.nevents))
+
         self.PushFrame(frame)
         
     def ComputeDepositedEnergy(self, frame):
@@ -125,11 +136,44 @@ class HistogramLLPs(icetray.I3Module):
             totalE += p.energy
         return totalE
 
+    def ComputeProdAlongPath(self, frame):
+        """ When along path in detector was the LLP produced?
+        	
+        Expressed as fraction prod_length/total_length.
+        A number between 0 and 1.
+        0 = detector entry, 1 = detector exit
+        
+        What should the distribution look like?
+        Flat to first order modified by:
+                - muons might stop in detector
+                - muons lose energy = smaller LLP xsec
+                - LLPs closer to exit have decay outside = not saved
+        If distribution is not flat + above effects then
+        cross section bias is too large.
+        """
+        # Take first MMCTrack, that is the MuonGun muon
+        tracks = MuonGun.Track.harvest(frame['I3MCTree'], frame['MMCTrackList'])
+        track = tracks[0]
+        # Find distance to entrance and exit from detector volume
+        intersections = self.surface.intersection(track.pos, track.dir)
+        # Get total length in detector
+        total_length = intersections.second - intersections.first
+        # Get LLP prod length
+        production = dataclasses.I3Position(frame["LLPInfo"]["prod_x"],
+                                            frame["LLPInfo"]["prod_y"],
+                                            frame["LLPInfo"]["prod_z"])
+        prod_intersections = self.surface.intersection(production, track.dir)
+        prod_length = -1*prod_intersections.first # entry point is BEHIND prod point, so neg length
+        # fraction
+        prodAlongPath = prod_length / total_length
+        return prodAlongPath
+
     def SaveInfo(self, frame, frameitem, listdictionary):
         listdictionary["trigger"].append(frameitem)
 
     def Finish(self):
         print("Total event rate trigger:", sum(self.weights))
+        print("Total number of events:", self.nevents)
         # plot histograms
         for key, val in self.items_to_save.items():
             current_sub_dict = self.items_to_save[key]
@@ -144,11 +188,24 @@ class HistogramLLPs(icetray.I3Module):
             plt.savefig(self.folder_path + key +"_histogram.png")
 
 
-tray = I3Tray()
-sig_path="/mnt/scratch/parrishv/samples_052724/sig/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628/"
-#bkg_path
-folder_path="/mnt/home/parrishv/mount/icecube/dnn/var_test/plots/"
+# create argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("-a", "--axel", action="store_true", default=False, dest="axels-folders", help="Is Axel running this script?")
+params = vars(parser.parse_args())
 
+if not params["axels-folders"]:
+    # victoria is running this
+    sig_path="/mnt/scratch/parrishv/samples_052724/sig/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628/"
+    #bkg_path
+    folder_path="/mnt/home/parrishv/mount/icecube/dnn/var_test/plots/"
+    gcdfile = "/mnt/scratch/parrishv/samples_052724/sig/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz"
+else:
+    # axel is running this
+    sig_path="/data/user/axelpo/LLP-data/DarkLeptonicScalar.mass-115.eps-5e-6.nevents-250000_ene_1e2_2e5_gap_50_240202.203241628/"
+    folder_path="/data/user/axelpo/microNN_filter/var_test/plots/"
+    gcdfile = "/data/sim/sim-new/downloads/GCD/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz"
+
+tray = I3Tray()
 tray.Add("I3Reader", filenamelist= list(glob.glob(sig_path+"LLPSim*/*.gz")))
-tray.Add(HistogramLLPs, folder_path = folder_path, GCDFile = "/mnt/scratch/parrishv/samples_052724/sig/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz")
+tray.Add(HistogramLLPs, folder_path = folder_path, GCDFile = gcdfile)
 tray.Execute()
