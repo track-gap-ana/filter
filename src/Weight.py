@@ -4,34 +4,45 @@
 #
 # SPDX-License-Identifier: BSD-2-Clause
 
-import pandas as pd
-import pylab as plt
 from pathlib import Path
+
+from I3Tray import I3Tray
+from icecube import hdfwriter, simclasses
+import yaml
 import glob
-import simweights
+import logging
+
 
 class Weight(object):
     def __init__(self):
         pass
 
-    def bkgWeight(self, args, h5file):
+    def readFiles(self, bkg):
+        filenamelist = sorted(str(f) for f in Path(bkg).glob("*zst"))
+        return filenamelist
+    
+    def readKeys(self, config_var):
+        with open(config_var, 'r') as f:
+            config = yaml.full_load(f)
+            # loading baseline variables that are required in calculator
+            l_Vars = config['vars'][0]['var']
+            logging.info(f"Variables to be read from the config file: {l_Vars}")
+            return l_Vars
+            
+    def makehdf5(self, args):
+        if args.fast is not None: frames = int(100)
+        else: frames = float("inf")
 
-        # load the hdf5 file that we just created using pandas
-        hdfstore = pd.HDFStore(h5file, "r")
-
-        # initiate nfiles used in bkg hist production
-        if args.nfiles is not None: nfiles =  args.nfiles
-        else : nfiles = len(glob.glob(args.bkg_path))
-
-        weighter = simweights.CorsikaWeighter(hdfstore, nfiles)
-
-        # create an object to represent our cosmic-ray primary flux model
-        flux = simweights.GaisserH4a()
-
-        # get the weights by passing the flux to the weighter
-        bkg_weights = weighter.get_weights(flux)
-
-        return bkg_weights
+        tray = I3Tray()
+        tray.Add("I3Reader", FileNameList=self.readFiles(args.bkg_path))
+        tray.Add(
+            hdfwriter.I3HDFWriter,
+            SubEventStreams=["InIceSplit"],
+            keys=self.readKeys(args.config_var),
+            output=f"{args.outdir}/CORSIKA.hdf5",
+        )
+        tray.Execute(frames)
+    
 
 if __name__ == "__main__":
     bkg_weight = Weight()

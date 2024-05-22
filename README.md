@@ -1,12 +1,25 @@
 # microNN_filter
-## Histograming: 
 
-### Example line:
+## 1. CORSIKA Weights: 
+First, you need to produce your CORSIKA weights. That is done in the `Weights.py` class. 
+
+
+All you need to provide to this is the weight flag, but you can also pass a `nevents` flag if you are doing a fast test. Make sure if you use `--fast` you use it for the histograming portion too:
+
+`python src/trackgapana.py --redo --fast --weight`
+
+These weights should be saved to the same directory as your simulation files. 
+
+todo: 
+[] @axel itegrate this functionality into the simulation framework instead of the histograming one...? 
+[] Need to alter VarCalculator to be able to calculate the variables we are using in hdf5 and not just i3 files... this seems stupid. Maybe it's worth getting in touch with the simweights people... 
+
+## 2. Histograming: 
 
 #### Background histograms: 
 Running to redo the csv files already created with 1000 events, explicit calling of the hist flags, and the type of histogram you're making is for later stack plots. Running `--withbkg` means you are doing bkg only histograming. 
 
-`python src/trackgapana.py --redo --nevents 1000 --hist --type stack --withbkg `
+`python src/trackgapana.py --redo --fast --hist --type stack --withbkg `
 
 ##### Signal histograms: 
 Same as bkg except without `--withbkg` flag
@@ -22,6 +35,6 @@ bash-4.2$ ls outdir/
 bash-4.2$ 
 ```
 
-## Plotting: 
+## 3. Plotting: 
 
 Yeah... okay something else needs to be done about weighting corsika with the variables already selected and histogramed :/ 

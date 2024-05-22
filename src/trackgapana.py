@@ -4,6 +4,7 @@ from icecube.icetray import I3Tray
 import argparse
 import logging
 import Hist
+import Weight
 
 """
 
@@ -15,6 +16,10 @@ logger = logging.getLogger(__name__)
 class Make(object):
     def __init__(self):
         pass
+
+    def makeWeights(self, args):
+        weight = Weight.Weight()
+        weight.makehdf5(args)
     
     def makeStackHist(self, args):
         # Ensuring that the user wants to replace histograms and checks that the outdir does not contain histograms
@@ -43,6 +48,8 @@ class Make(object):
         if args.verbose is True: logging.basicConfig(level=logging.DEBUG)
         else: logging.basicConfig(level=logging.INFO)
         
+        if args.type == "weight":
+            self.makeWeights(args)
         # make stacks
         if args.type == "stack":
             if args.hist: self.makeStackHist(args)
@@ -61,17 +68,16 @@ if __name__ == "__main__":
     parser.add_argument("--gcd_path", '-g', default="/data/user/axelpo/LLP-at-IceCube/dark-leptonic-scalar-simulation/resources/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz", required=False)    
     parser.add_argument('--config-var', '-cv', default = "configs/variables.yaml" ,help="config yaml variable file")
     parser.add_argument('--outdir', "-o", default="outdir")
-    parser.add_argument('--nevents', '-nE', help="Make hists with subset of events (must be run with --nfiles)", required=False)
-    parser.add_argument('--nfiles', '-nF', help="Make hists with subset of files (can be run with --nevents)", required=False)
     
     #turn on or off
+    parser.add_argument('--fast', action="store_true", help="Run with flag for fast testing")
     parser.add_argument('--withbkg', "-B", action="store_true")
     parser.add_argument('--plot', '-P', action="store_true")
     parser.add_argument('--hist', '-H', action="store_true")
     parser.add_argument('--redo', '-R', action="store_true")
     parser.add_argument('--verbose', '-v', action="store_true", help="Run with flag for debug logging")
     # histo and plotting types
-    parser.add_argument('--type', '-t', choices=['stack', 'yield'], required=True)
+    parser.add_argument('--type', '-t', choices=['weight','stack', 'yield'], required=True)
 
     args = parser.parse_args()
 
