@@ -8,6 +8,7 @@ import re
 import logging
 import os
 import yaml
+import VarCalculator
 
 # set global logger
 logger = logging.getLogger(__name__)
@@ -40,8 +41,8 @@ class Hist(object):
     
     def readConfigs(self):
         with open(self.config_var, 'r') as f:
-            d_histVars = yaml.full_load(f)
-        return d_histVars
+            self.d_histVars = yaml.full_load(f)
+        return self.d_histVars
 
     def create_hist_struct(self, args, fileName=None, color=None):
         """Creates two data structures containing mass, epsilon, color, gap length, and either weight or ene.
@@ -84,11 +85,8 @@ class Hist(object):
 
     def addTray(self, args, filenamelist, histAttri):
         tray = I3Tray()
-        # if args.nfiles is not None: 
-        #     nfiles = int(args.nfiles)  # Convert args.nfiles to an integer
-        #     filenamelist = filenamelist[:nfiles]
         
-        if args.nevents is not None: frames = int(args.nevents)
+        if args.fast is not None: frames = int(100)
         else: frames = float("inf")
         
         tray.Add("I3Reader", filenamelist= filenamelist)
@@ -168,23 +166,23 @@ class Stack(icetray.I3Module):
         self.config_var = self.GetParameter("config_var")
         self.weights = []
 
-        #Create dictionaries for stack histogram
+        # Create dictionaries for stack histogram
         with open(self.config_var, 'r') as f:
-            d_histVars = yaml.full_load(f)
-            d_histVars = d_histVars["vars"]
+            config = yaml.full_load(f)
+            self.d_histVars = config["vars"]["hlv"]
         # make a df hist out of it
-        self.df_hist = pd.DataFrame(d_histVars, index =['bins', 'min', 'max'] )
+        self.df_hist = pd.DataFrame(self.d_histVars, index =['bins', 'min', 'max'] )
 
         # configure hist attributes by unzipping dictionary to lists
         self.d_histAttri = self.GetParameter("d_histAttri")
         (inx, item) = zip(*self.d_histAttri.items())
-        df_histAttri = pd.DataFrame({varName : item for varName in d_histVars.keys()}, index = inx)
+        df_histAttri = pd.DataFrame({varName : item for varName in self.d_histVars.keys()}, index = inx)
 
         # append hist attributes to hist vars
         self.df_hist = self.df_hist._append(df_histAttri, ignore_index = False)
  
         # create new dictionary for histogram event entries called in AppendHist()
-        self.d_histData = {varName: [] for varName in d_histVars.keys()}
+        self.d_histData = {varName: [] for varName in self.d_histVars.keys()}
 
         # create surface for detector volume
         self.gcdFile = self.GetParameter("GCDFile")
@@ -209,48 +207,17 @@ class Stack(icetray.I3Module):
         # self.AppendHist(frame, frame["LLPInfo"]["prod_z"], self.d_histVars["prodz"]["histogramdictionary"])
         # self.AppendHist(frame, frame["LLPInfo"]["prod_z"]-frame["LLPInfo"]["length"]*np.cos(frame["LLPInfo"]["zenith"]), self.d_histVars["decayz"]["histogramdictionary"])
         # self.AppendHist(frame, frame["I3MCTree_preMuonProp"].get_head().dir.zenith, self.d_histVars["zenith"]["histogramdictionary"])
-        self.AppendHist(varName = 'Edeposited', frameitem= self.ComputeDepositedEnergy(frame))
-        self.AppendHist(varName = "totalInitialE", frameitem = self.ComputeTotalEnergyAtBoundary(frame))
-        self.AppendHist(varName = "totalMCPulseCharge", frameitem = self.ComputeTotalMCPulseCharge(frame))
-        self.AppendHist(varName = "totalDOMHits", frameitem = self.ComputeTotalDOMHits(frame))
+        
+        # Loading var calculator!
+        var_calculator = VarCalculator.VarCalculator() 
+        self.AppendHist(varName='Edeposited', frameitem=var_calculator.ComputeDepositedEnergy(frame))
+        self.AppendHist(varName = "totalInitialE", frameitem = var_calculator.ComputeTotalEnergyAtBoundary(frame))
+        self.AppendHist(varName = "totalMCPulseCharge", frameitem = var_calculator.ComputeTotalMCPulseCharge(frame))
+        self.AppendHist(varName = "totalDOMHits", frameitem = var_calculator.ComputeTotalDOMHits(frame))
 
     
         self.PushFrame(frame)
         
-    def ComputeDepositedEnergy(self, frame):
-        edep = 0
-
-        # Change name scheme between sig and bkg sim samples 
-        if 'I3MCTree' in frame: MCTree = 'I3MCTree'
-        else: MCTree = 'SignalI3MCTree'
-
-        for track in MuonGun.Track.harvest(frame[MCTree], frame['MMCTrackList']):
-            # Find distance to entrance and exit from sampling volume
-            intersections = self.surface.intersection(track.pos, track.dir)
-            # Get the corresponding energies
-            e0, e1 = track.get_energy(intersections.first), track.get_energy(intersections.second)
-            # Accumulate
-            edep +=  (e0-e1)
-        return edep
-    
-    def ComputeTotalMCPulseCharge(self, frame):
-        totalCharge = 0
-        for key, item in frame["I3MCPulseSeriesMap"]:
-            totalCharge += sum([pulse.charge for pulse in item])
-        return totalCharge
-    
-    def ComputeTotalDOMHits(self, frame):
-        totalHits = 0
-        for key, item in frame["I3MCPulseSeriesMap"]:
-            totalHits += 1
-        return totalHits
-    
-    def ComputeTotalEnergyAtBoundary(self, frame):
-        totalE = 0
-        for p in frame["I3MCTree_preMuonProp"].children(frame["I3MCTree_preMuonProp"].get_head()):
-            totalE += p.energy
-        return totalE
-    
     def Finish(self):
         # convert dictionaries to dataframes
         df_histData = pd.DataFrame(self.d_histData)        
@@ -261,7 +228,7 @@ class Stack(icetray.I3Module):
         # Create an HDF5 file for background weighting
         outFile = self.df_hist.loc['legend'][0].replace(" ", "_")
         self.df_hist.to_csv(f"{self.out_dir}/{outFile}.csv")
-        if "CORSIKA" in str(outFile):
-            with pd.HDFStore(f"{self.out_dir}/forbkgweighting.hdf5", mode = 'w') as store:
-                for column in df_histData.columns:
-                    store.put(column, df_histData[column]) 
+        # if "CORSIKA" in str(outFile):
+        #     with pd.HDFStore(f"{self.out_dir}/forbkgweighting.hdf5", mode = 'w') as store:
+        #         for column in df_histData.columns:
+        #             store.put(column, df_histData[column]) 
