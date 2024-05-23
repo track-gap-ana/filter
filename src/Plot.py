@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import yaml
 import os
 import logging
-import Weight
+from Weight import Weight
 logger = logging.getLogger(__name__)
 
 
@@ -25,7 +25,6 @@ class Stack():
         plt.xlabel(var)
         plt.ylabel("NEvents")
         
-    
     def processHist(self,args):
         with open(self.config_var, 'r') as f:
             d_histVars = yaml.full_load(f)
@@ -34,16 +33,18 @@ class Stack():
                 logging.info(f'Plotting variable: {var}')
                 # make plot
                 self.iniPad(var)
-                print('histpath', self.histpath)
+                logger.info(f'Histogram path: {self.histpath}')
                 for histfile in os.listdir(self.histpath):
                     histfile = os.path.join(self.histpath, histfile)
-                    if os.path.isdir(histfile) == False:
+                    if os.path.isdir(histfile) == False and "hdf5" not in histfile:
                         print('histfile', histfile)
                         df = self.csvUnpack(histfile=histfile)
                         hist_info = df[var]
                         hist = hist_info.iloc[6:].astype(float)
                         logging.info(f"Plotting sample: {hist_info.loc['legend']}")
-                        if "CORSIKA" in histfile: weight = Weight.Weight().bkgWeight(args, f"{args.outdir}/forbkgweighting.hdf5")
+                        if "CORSIKA" in histfile:
+                            weight = Weight()
+                            weight = weight.makeWeights(f"{args.outdir}/CORSIKA.hdf5")
                         else: weight = None
                         plt.hist(hist,bins=bins[0],range=tuple(bins[-2:]), color = hist_info.loc['color'], label = hist_info.loc['legend'], alpha=.5, weights=weight)
                 plt.legend(fontsize=6)

@@ -5,6 +5,8 @@ import argparse
 import logging
 import Hist
 import Weight
+import os
+
 
 """
 
@@ -23,12 +25,11 @@ class Make(object):
     
     def makeStackHist(self, args):
         # Ensuring that the user wants to replace histograms and checks that the outdir does not contain histograms
-        if args.redo is True:
-            stack = Hist.Hist()
-            stack.makeHist(args)
+        if args.redo is False and os.listdir(args.outdir):
+            logging.error("Outdir is not empty. Aborting...")
         else:
-            logging.error("Outdir is not empty")
-            pass
+            stack = Hist.Hist()
+            stack.makeHist(args)    
     
     # def makeYieldHist(self, args):
     #     if args.redo is True and ("yield.csv" in list(glob.glob(args.outdir))):
@@ -50,6 +51,7 @@ class Make(object):
         
         if args.type == "weight":
             self.makeWeights(args)
+
         # make stacks
         if args.type == "stack":
             if args.hist: self.makeStackHist(args)
@@ -63,6 +65,9 @@ class Make(object):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
+    # histo and plotting types
+    parser.add_argument('--type', '-t', choices=['weight','stack', 'yield'], required=True)
+    
     parser.add_argument("--sigs_path", "-sp", default="/data/user/axelpo/LLP-data/", required=False, help="All signal simulation")
     parser.add_argument("--bkg_path", "-bp", default="/data/sim/IceCube/2020/generated/CORSIKA-in-ice/20904/0198000-0198999/detector/")
     parser.add_argument("--gcd_path", '-g', default="/data/user/axelpo/LLP-at-IceCube/dark-leptonic-scalar-simulation/resources/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115.i3.gz", required=False)    
@@ -74,10 +79,9 @@ if __name__ == "__main__":
     parser.add_argument('--withbkg', "-B", action="store_true")
     parser.add_argument('--plot', '-P', action="store_true")
     parser.add_argument('--hist', '-H', action="store_true")
-    parser.add_argument('--redo', '-R', action="store_true")
+    parser.add_argument('--redo', '-R', action="store_true", help='Redo histograming')
     parser.add_argument('--verbose', '-v', action="store_true", help="Run with flag for debug logging")
-    # histo and plotting types
-    parser.add_argument('--type', '-t', choices=['weight','stack', 'yield'], required=True)
+
 
     args = parser.parse_args()
 

@@ -1,23 +1,9 @@
 vars:
-
-# native i3 variables
-  - var:
-    - "I3MCTree"
-    - "SignalI3MCTree"
-    - "MMCTrackList"
-    - "I3MCPulseSeriesMap"
-    - "I3MCTree_preMuonProp"
-# calculator variables 
-  - hlv:
     "Edeposited"            : [100, 0, 1000]
     "totalInitialE"         : [100, 0, 20000]
     "totalMCPulseCharge"    : [100, 0, 4000]
     "totalDOMHits"          : [100, 0, 2500]
   
-
-
-
-
 # -- hist configurations
 attri:
   "colorblind"             : [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", 

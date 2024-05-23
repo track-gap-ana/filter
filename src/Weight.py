@@ -8,9 +8,8 @@ from pathlib import Path
 
 from I3Tray import I3Tray
 from icecube import hdfwriter, simclasses
-import yaml
-import glob
-import logging
+import simweights
+import pandas as pd
 
 
 class Weight(object):
@@ -20,14 +19,6 @@ class Weight(object):
     def readFiles(self, bkg):
         filenamelist = sorted(str(f) for f in Path(bkg).glob("*zst"))
         return filenamelist
-    
-    def readKeys(self, config_var):
-        with open(config_var, 'r') as f:
-            config = yaml.full_load(f)
-            # loading baseline variables that are required in calculator
-            l_Vars = config['vars'][0]['var']
-            logging.info(f"Variables to be read from the config file: {l_Vars}")
-            return l_Vars
             
     def makehdf5(self, args):
         if args.fast is not None: frames = int(100)
@@ -38,12 +29,20 @@ class Weight(object):
         tray.Add(
             hdfwriter.I3HDFWriter,
             SubEventStreams=["InIceSplit"],
-            keys=self.readKeys(args.config_var),
+            keys=["PolyplopiaPrimary", "I3PrimaryInjectorInfo", "I3CorsikaWeight"],
             output=f"{args.outdir}/CORSIKA.hdf5",
         )
         tray.Execute(frames)
+    def makeWeights(self, weightfile):
+        hdffile = pd.HDFStore(weightfile, 'r')
+        weighter = simweights.CorsikaWeighter(hdffile)
+        # select flux spectrum desired
+        flux = simweights.GaisserH4a()
+        weights = weighter.get_weights(flux)
+        return weights
+
     
 
 if __name__ == "__main__":
     bkg_weight = Weight()
-    bkg_weight.bkgWeight()
+    bkg_weight.makehdf5(args)

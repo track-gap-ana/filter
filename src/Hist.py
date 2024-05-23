@@ -169,7 +169,7 @@ class Stack(icetray.I3Module):
         # Create dictionaries for stack histogram
         with open(self.config_var, 'r') as f:
             config = yaml.full_load(f)
-            self.d_histVars = config["vars"]["hlv"]
+            self.d_histVars = config["vars"]
         # make a df hist out of it
         self.df_hist = pd.DataFrame(self.d_histVars, index =['bins', 'min', 'max'] )
 
@@ -209,11 +209,11 @@ class Stack(icetray.I3Module):
         # self.AppendHist(frame, frame["I3MCTree_preMuonProp"].get_head().dir.zenith, self.d_histVars["zenith"]["histogramdictionary"])
         
         # Loading var calculator!
-        var_calculator = VarCalculator.VarCalculator() 
-        self.AppendHist(varName='Edeposited', frameitem=var_calculator.ComputeDepositedEnergy(frame))
-        self.AppendHist(varName = "totalInitialE", frameitem = var_calculator.ComputeTotalEnergyAtBoundary(frame))
-        self.AppendHist(varName = "totalMCPulseCharge", frameitem = var_calculator.ComputeTotalMCPulseCharge(frame))
-        self.AppendHist(varName = "totalDOMHits", frameitem = var_calculator.ComputeTotalDOMHits(frame))
+        var_calculator = VarCalculator.VarCalculator(self.surface, frame) 
+        self.AppendHist(varName='Edeposited', frameitem=var_calculator.ComputeDepositedEnergy())
+        self.AppendHist(varName = "totalInitialE", frameitem = var_calculator.ComputeTotalEnergyAtBoundary())
+        self.AppendHist(varName = "totalMCPulseCharge", frameitem = var_calculator.ComputeTotalMCPulseCharge())
+        self.AppendHist(varName = "totalDOMHits", frameitem = var_calculator.ComputeTotalDOMHits())
 
     
         self.PushFrame(frame)
@@ -225,10 +225,7 @@ class Stack(icetray.I3Module):
         outFile = self.df_hist.loc['legend'][0].replace(" ", "_")
         logging.info(f"Creating {outFile} histogram -------------------")
         logging.debug(self.df_hist)
-        # Create an HDF5 file for background weighting
+
         outFile = self.df_hist.loc['legend'][0].replace(" ", "_")
         self.df_hist.to_csv(f"{self.out_dir}/{outFile}.csv")
-        # if "CORSIKA" in str(outFile):
-        #     with pd.HDFStore(f"{self.out_dir}/forbkgweighting.hdf5", mode = 'w') as store:
-        #         for column in df_histData.columns:
-        #             store.put(column, df_histData[column]) 
+
