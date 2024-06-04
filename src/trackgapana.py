@@ -1,16 +1,16 @@
 #!/usr/bin/env python
-from icecube import icetray, dataio, dataclasses, MuonGun
+from icecube import icetray, dataio, dataclasses
 from icecube.icetray import I3Tray
 import argparse
 import logging
-import Hist
+import VarCalculator
 import Weight
 import os
 
 
 """
 
-Driver script for plotting and histograming 
+Driver script for plotting and varograming 
 
 """
 logger = logging.getLogger(__name__)
@@ -23,24 +23,18 @@ class Make(object):
         weight = Weight.Weight()
         weight.makehdf5(args)
     
-    def makeStackHist(self, args):
-        # Ensuring that the user wants to replace histograms and checks that the outdir does not contain histograms
+    def makeStackTree(self, args):
+        # Ensuring that the user wants to replace vars and checks that the outdir does not contain vars
         if args.redo is False and os.listdir(args.outdir):
             logging.error("Outdir is not empty. Aborting...")
         else:
-            stack = Hist.Hist()
-            stack.makeHist(args)    
-    
-    # def makeYieldHist(self, args):
-    #     if args.redo is True and ("yield.csv" in list(glob.glob(args.outdir))):
-    #         # Redo yields hist 
-    #     else:
-    #         logging.error("Outdir is not empty")
-    #         pass
+            stack = VarCalculator.VarCalculator()
+            stack.makeTree(args)    
+
         
     def plotStack(self, args):
         import Plot
-        plot = Plot.Stack(histpath=args.outdir, config_var=args.config_var)
+        plot = Plot.Stack(filepath=args.outdir, config_var=args.config_var)
         plot.processHist(args=args)
 
 
@@ -52,20 +46,21 @@ class Make(object):
         if args.type == "weight":
             self.makeWeights(args)
 
-        # make stacks
+        # make tree
+        if args.var: self.makeStackTree(args)
+        
+        # make stack histogram and plot
         if args.type == "stack":
-            if args.hist: self.makeStackHist(args)
             if args.plot: self.plotStack(args)
 
-        # make yields
-        if args.type == "yield": 
-            if args.hist: self.makeYieldHist(args)
+        # make yields histogram and plot
+        if args.type == "yield":
             if args.plot: self.plotYield(args)
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    # histo and plotting types
+    # varo and plotting types
     parser.add_argument('--type', '-t', choices=['weight','stack', 'yield'], required=True)
     
     parser.add_argument("--sigs_path", "-sp", default="/data/user/axelpo/LLP-data/", required=False, help="All signal simulation")
@@ -78,8 +73,8 @@ if __name__ == "__main__":
     parser.add_argument('--fast', action="store_true", help="Run with flag for fast testing")
     parser.add_argument('--withbkg', "-B", action="store_true")
     parser.add_argument('--plot', '-P', action="store_true")
-    parser.add_argument('--hist', '-H', action="store_true")
-    parser.add_argument('--redo', '-R', action="store_true", help='Redo histograming')
+    parser.add_argument('--var', '-V', action="store_true")
+    parser.add_argument('--redo', '-R', action="store_true", help='Redo varograming')
     parser.add_argument('--verbose', '-v', action="store_true", help="Run with flag for debug logging")
 
 

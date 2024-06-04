@@ -1,30 +1,18 @@
 # microNN_filter
 
-## 1. CORSIKA Weights: 
-First, you need to produce your CORSIKA weights. That is done in the `Weights.py` class. 
+## 1. Variable Calculator: 
 
-
-All you need to provide to this is the weight flag, but you can also pass a `nevents` flag if you are doing a fast test. Make sure if you use `--fast` you use it for the histograming portion too:
-
-`python src/trackgapana.py --fast --type weight`
-
-These weights should be saved to the same directory as where your histograms will live. They will be used in the Plotting step (4).   
-
-
-## 2. Histograming: 
-
-#### Background histograms: 
+#### Background samples: 
 Running to `--redo` the csv files already created with 100 events, explicit calling of the hist flags, and the type of histogram you're making is for later stack plots. Running `--withbkg` means you are doing bkg *only* histograming. 
 
-`python src/trackgapana.py --redo --fast --hist --type stack --withbkg `
+`python src/trackgapana.py --redo --fast --var --type stack --withbkg `
 
-##### Signal histograms: 
+##### Signal samples: 
 
-### Stacks
 Same as bkg except without `--withbkg` flag
-`python src/trackgapana.py --redo --hist --type stack`
+`python src/trackgapana.py --redo --var --type stack`
 
-All histograms should now be in `.csv` files in your outdir, including your CORSIKA histograms, signal samples, and CORSIKA weight (the `.hdf5` file).
+All event trees should now be in `.csv` files in your outdir, including your CORSIKA trees, signal samples, and CORSIKA weight (the `.hdf5` file).
 
 ```
 bash-4.2$ ls outdir/
@@ -33,7 +21,7 @@ bash-4.2$ ls outdir/
 115.0_GeV_-5e-06_eps_2500.0_events_1e2_1e4_ene_50.0_m.csv    CORSIKA_100nevents.hdf5
 ```
 
-## 3. Plotting: 
+## 2. Histogram & Plotting: 
 
 ### Stacks
 

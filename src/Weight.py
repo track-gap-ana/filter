@@ -12,37 +12,29 @@ import simweights
 import pandas as pd
 
 
-class Weight(object):
+class CorsikaWeight(object):
     def __init__(self):
         pass
 
-    def readFiles(self, bkg):
-        filenamelist = sorted(str(f) for f in Path(bkg).glob("*zst"))
-        return filenamelist
-            
-    def makehdf5(self, args):
-        if args.fast is not None: frames = int(100)
-        else: frames = float("inf")
 
-        tray = I3Tray()
-        tray.Add("I3Reader", FileNameList=self.readFiles(args.bkg_path))
-        tray.Add(
-            hdfwriter.I3HDFWriter,
-            SubEventStreams=["InIceSplit"],
-            keys=["PolyplopiaPrimary", "I3PrimaryInjectorInfo", "I3CorsikaWeight"],
-            output=f"{args.outdir}/CORSIKA.hdf5",
-        )
-        tray.Execute(frames)
-    def makeWeights(self, weightfile):
-        hdffile = pd.HDFStore(weightfile, 'r')
-        weighter = simweights.CorsikaWeighter(hdffile)
-        # select flux spectrum desired
+    def makeWeights(self, hdf5):
+ 
+    
+        # load the hdf5 file that we just created using pandas
+        file = pd.HDFStore(hdf5, "r")
+
+        # instantiate the weighter object by passing the pandas file to it
+        weighter = simweights.CorsikaWeighter(file)
+
+        # create an object to represent our cosmic-ray primary flux model
         flux = simweights.GaisserH4a()
+
+        # get the weights by passing the flux to the weighter
         weights = weighter.get_weights(flux)
         return weights
 
     
 
 if __name__ == "__main__":
-    bkg_weight = Weight()
-    bkg_weight.makehdf5(args)
+    bkg_weight = CorsikaWeight()
+    bkg_weight.makehdf5()

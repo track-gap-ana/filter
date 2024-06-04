@@ -10,15 +10,25 @@ import logging
 from Weight import Weight
 logger = logging.getLogger(__name__)
 
+import os
+import h5py
+import numpy as np
+import matplotlib.pyplot as plt
+from PlotHelper import PlotHelper
+
 
 class Stack():
-    def __init__(self, histpath, config_var):
-        self.histpath = histpath
+    def __init__(self, filepath, config_var):
+        self.filepath = filepath
         self.config_var = config_var
 
-    def csvUnpack(self, histfile):
-        df = pd.read_csv(histfile, index_col=0)
-        return df
+    def hdf5Reader(self, dir):
+        # Directory containing the HDF5 files
+        directory = dir
+
+        # Get list of HDF5 files in the directory
+        hdf5_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.hdf5')]
+        return hdf5_files
     
     def iniPad(self,var):
         plt.figure()
@@ -26,29 +36,27 @@ class Stack():
         plt.ylabel("NEvents")
         
     def processHist(self,args):
-        with open(self.config_var, 'r') as f:
-            d_histVars = yaml.full_load(f)
-            d_histVars = d_histVars["vars"]
-            for var,bins in d_histVars.items():
-                logging.info(f'Plotting variable: {var}')
-                # make plot
-                self.iniPad(var)
-                logger.info(f'Histogram path: {self.histpath}')
-                for histfile in os.listdir(self.histpath):
-                    histfile = os.path.join(self.histpath, histfile)
-                    if os.path.isdir(histfile) == False and "hdf5" not in histfile:
-                        print('histfile', histfile)
-                        df = self.csvUnpack(histfile=histfile)
-                        hist_info = df[var]
-                        hist = hist_info.iloc[6:].astype(float)
-                        logging.info(f"Plotting sample: {hist_info.loc['legend']}")
-                        if "CORSIKA" in histfile:
-                            weight = Weight()
-                            weight = weight.makeWeights(f"{args.outdir}/CORSIKA.hdf5")
-                        else: weight = None
-                        plt.hist(hist,bins=bins[0],range=tuple(bins[-2:]), color = hist_info.loc['color'], label = hist_info.loc['legend'], alpha=.5, weights=weight)
+        # load plot helper and the vars and colors for plotting
+        plot_helper = PlotHelper()
+
+        vars = plot_helper.loadVars()
+        colors = plot_helper.loadColors()
+
+        for var, color in zip(vars, colors):
+            plt.figure()
+            for hdf5_file in self.hdf5Reader(args.outdir):
+                with h5py.File(hdf5_file, 'r') as f:
+                    data = f[var][:]
+                    bins, min_val, max_val = plot_helper.readConfigs(var, args)
+                    if "CORSIKA" in hdf5_file:
+                        weighter = Weight()
+                        weights = weighter.makeWeights(hdf5_file)
+                        plt.hist(data, bins=bins, range=(min_val, max_val), color=color, alpha=0.5, label=plot_helper.parseLegend(hdf5_file), weight = weights)
+                    else: 
+                        plt.hist(data, bins=bins, range=(min_val, max_val), color=color, alpha=0.5, label=plot_helper.parseLegend(hdf5_file))
                 plt.legend(fontsize=6)
-                plt.savefig(self.histpath+'/plots/'+var)
+                plt.show()
+                plt.savefig(self.filepath+'/plots/'+var)
             
 
 if __name__ == "__main__":
