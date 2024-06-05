@@ -55,9 +55,9 @@ class VarCalculator(object):
         tray.Add("I3Reader", filenamelist= filenamelist)
         tray.Add(Stack, GCDFile = args.gcd_path, var=vars)
         tray.Add(
-            hdfwriter.I3HDFWriter,
+            hdfwriter.I3SimHDFWriter,
             SubEventStreams=["InIceSplit"],
-            keys=[f"{vars}, I3CorsikaWeightMap"],
+            keys=[f"{vars}, CorsikaWeightMap", "I3EventHeader"],
             output=out_file,
         )
         tray.Execute(frames)
