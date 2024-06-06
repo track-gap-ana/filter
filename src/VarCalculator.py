@@ -53,18 +53,18 @@ class VarCalculator(object):
         # options required for simweights 
         if weight is True: 
             writer = hdfwriter.I3SimHDFWriter
-            vars = [vars, "CorsikaWeightMap", "I3EventHeader", "PolyplopiaPrimary"]
+            write_vars = vars + ["CorsikaWeightMap", "I3EventHeader", "PolyplopiaPrimary"]
         else: 
-            writer = hdfwriter.I3HDFWriter
-            vars = [vars]
-        logger.debug(f"vars: {vars}")
+            writer = hdfwriter.I3SimHDFWriter
+            write_vars = vars
+        logger.debug(f"\n--------------Variables for calculation and booking: {vars}")
 
         # Add modules to the tray
         tray.Add("I3Reader", filenamelist= filenamelist)
         tray.Add(Stack, GCDFile = args.gcd_path, vars=vars)
         tray.Add(
             writer,
-            keys=vars,
+            keys=write_vars,
             output=out_file,
         )
         tray.Execute()
@@ -112,7 +112,7 @@ class Stack(icetray.I3Module):
         self.gcdFile = self.AddParameter("GCDFile", "GCDFile", "")
     
     def Configure(self): 
-        self.self = self.GetParameter("vars")
+        self.vars = self.GetParameter("vars")
         self.weights = []
 
         # create surface for detector volume
@@ -133,9 +133,10 @@ class Stack(icetray.I3Module):
 
         # Loading var calculator!
         var_calculator = VarCalculatorHelper.VarCalculatorHelper(self.surface, frame) 
-        
-        for var in self.vars:
-            frame[var] = icetray.I3Double(var_calculator.RunCalculator(var))
+        for var_name in self.vars:
+            var_value = var_calculator.RunCalculator(var_name)     
+            # logger.debug(f"Var: {var_name} = {var_value}")       
+            frame.Put(var_name, dataclasses.I3Double(var_value))
             self.PushFrame(frame)
         
     def Finish(self):

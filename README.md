@@ -5,14 +5,14 @@
 #### Background samples: 
 Running to `--redo` the csv files already created with 100 events, explicit calling of the hist flags, and the type of histogram you're making is for later stack plots. Running `--withbkg` means you are doing bkg *only* histograming. 
 
-`python src/trackgapana.py --redo --fast --var --type stack --withbkg `
+`python src/trackgapana.py --redo --var --type stack --withbkg `
 
 ##### Signal samples: 
 
 Same as bkg except without `--withbkg` flag
 `python src/trackgapana.py --redo --var --type stack`
 
-All event trees should now be in `.csv` files in your outdir, including your CORSIKA trees, signal samples, and CORSIKA weight (the `.hdf5` file).
+All event trees should now be in `.hdf5` files in your outdir, including your CORSIKA file (with calculated variables plus relevant variables for weighting during plotting), and signal files.
 
 ```
 bash-4.2$ ls outdir/

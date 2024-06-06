@@ -6,7 +6,7 @@ import pandas as pd
 import yaml
 import os
 import logging
-from Weight import Weight
+from Weight import CorsikaWeight
 import h5py
 from PlotHelper import PlotHelper
 
@@ -46,7 +46,7 @@ class Stack():
                     data = f[var][:]
                     bins, min_val, max_val = plot_helper.readConfigs(var, args)
                     if "CORSIKA" in hdf5_file:
-                        weighter = Weight()
+                        weighter = CorsikaWeight()
                         weights = weighter.makeWeights(hdf5_file)
                         plt.hist(data, bins=bins, range=(min_val, max_val), color=color, alpha=0.5, label=plot_helper.parseLegend(hdf5_file), weight = weights)
                     else: 

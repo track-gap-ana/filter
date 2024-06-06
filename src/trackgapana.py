@@ -4,13 +4,12 @@ from icecube.icetray import I3Tray
 import argparse
 import logging
 import VarCalculator
-import Weight
 import os
 
 
 """
 
-Driver script for plotting and varograming 
+Driver script for plotting and treeograming 
 
 """
 logger = logging.getLogger(__name__)
@@ -38,9 +37,6 @@ class Make(object):
         # set logging configs
         if args.verbose is True: logging.basicConfig(level=logging.DEBUG)
         else: logging.basicConfig(level=logging.INFO)
-        
-        if args.type == "weight":
-            self.makeWeights(args)
 
         # make h5 files
         if args.var: self.makeStackH5(args)
