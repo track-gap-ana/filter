@@ -24,7 +24,7 @@ class VarCalculator(object):
                 filenamelist= list(glob.glob(args.bkg_path+"/*zst"))
                 # logging.debug(filenamelist)
                 outfile = args.outdir+"/CORSIKA.hdf5"
-                self.runTray(args, out_file = outfile, filenamelist = filenamelist)
+                self.runTray(args, out_file = outfile, filenamelist = filenamelist, weight=True)
             else:
                 # make all other trees
                 if args.sigs_path is not None:
@@ -40,27 +40,34 @@ class VarCalculator(object):
                         else: 
                             pass
                         
-    def runTray(self, args, out_file, filenamelist):
+    def runTray(self, args, out_file, filenamelist, weight=False):
+        # fast option
+        if args.fast is not None: filenamelist = [filenamelist[0]]
 
         # Create dictionaries for stack treeogram
         with open(args.config_var, 'r') as f:
             config = yaml.full_load(f)
         vars = list(config["vars"].keys())
-
         tray = I3Tray()
         
-        if args.fast is not None: frames = int(100)
-        else: frames = float("inf")
-        
+        # options required for simweights 
+        if weight is True: 
+            writer = hdfwriter.I3SimHDFWriter
+            vars = [vars, "CorsikaWeightMap", "I3EventHeader", "PolyplopiaPrimary"]
+        else: 
+            writer = hdfwriter.I3HDFWriter
+            vars = [vars]
+        logger.debug(f"vars: {vars}")
+
+        # Add modules to the tray
         tray.Add("I3Reader", filenamelist= filenamelist)
-        tray.Add(Stack, GCDFile = args.gcd_path, var=vars)
+        tray.Add(Stack, GCDFile = args.gcd_path, vars=vars)
         tray.Add(
-            hdfwriter.I3SimHDFWriter,
-            SubEventStreams=["InIceSplit"],
-            keys=[f"{vars}, CorsikaWeightMap", "I3EventHeader"],
+            writer,
+            keys=vars,
             output=out_file,
         )
-        tray.Execute(frames)
+        tray.Execute()
 
         
 class Geometry(object):
@@ -105,7 +112,7 @@ class Stack(icetray.I3Module):
         self.gcdFile = self.AddParameter("GCDFile", "GCDFile", "")
     
     def Configure(self): 
-        self.self = self.GetParameter("var")
+        self.self = self.GetParameter("vars")
         self.weights = []
 
         # create surface for detector volume

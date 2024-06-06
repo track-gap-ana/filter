@@ -3,18 +3,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 import pandas as pd
-import matplotlib.pyplot as plt
 import yaml
 import os
 import logging
 from Weight import Weight
-logger = logging.getLogger(__name__)
-
-import os
 import h5py
-import numpy as np
-import matplotlib.pyplot as plt
 from PlotHelper import PlotHelper
+
+logger = logging.getLogger(__name__)
 
 
 class Stack():
@@ -33,6 +29,7 @@ class Stack():
     def iniPad(self,var):
         plt.figure()
         plt.xlabel(var)
+        # todo : remove this hardcode
         plt.ylabel("NEvents")
         
     def processHist(self,args):

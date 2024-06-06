@@ -17,14 +17,14 @@ class CorsikaWeight(object):
         pass
 
 
-    def makeWeights(self, hdf5):
+    def makeWeights(self, hdf5,nfiles):
  
     
         # load the hdf5 file that we just created using pandas
         file = pd.HDFStore(hdf5, "r")
-
-        # instantiate the weighter object by passing the pandas file to it
-        weighter = simweights.CorsikaWeighter(file)
+        if nfiles == 1:
+            # instantiate the weighter object by passing the pandas file to it
+            weighter = simweights.CorsikaWeighter(file, nfiles=1)
 
         # create an object to represent our cosmic-ray primary flux model
         flux = simweights.GaisserH4a()

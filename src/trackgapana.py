@@ -19,17 +19,13 @@ class Make(object):
     def __init__(self):
         pass
 
-    def makeWeights(self, args):
-        weight = Weight.Weight()
-        weight.makehdf5(args)
-    
-    def makeStackTree(self, args):
+    def makeStackH5(self, args):
         # Ensuring that the user wants to replace vars and checks that the outdir does not contain vars
         if args.redo is False and os.listdir(args.outdir):
             logging.error("Outdir is not empty. Aborting...")
         else:
             stack = VarCalculator.VarCalculator()
-            stack.makeTree(args)    
+            stack.loopTray(args)    
 
         
     def plotStack(self, args):
@@ -46,8 +42,8 @@ class Make(object):
         if args.type == "weight":
             self.makeWeights(args)
 
-        # make tree
-        if args.var: self.makeStackTree(args)
+        # make h5 files
+        if args.var: self.makeStackH5(args)
         
         # make stack histogram and plot
         if args.type == "stack":
@@ -60,8 +56,8 @@ class Make(object):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    # varo and plotting types
-    parser.add_argument('--type', '-t', choices=['weight','stack', 'yield'], required=True)
+    # what do you want to do? 
+    parser.add_argument('--type', '-t', choices=['stack', 'yield'], required=True)
     
     parser.add_argument("--sigs_path", "-sp", default="/data/user/axelpo/LLP-data/", required=False, help="All signal simulation")
     parser.add_argument("--bkg_path", "-bp", default="/data/sim/IceCube/2020/generated/CORSIKA-in-ice/20904/0198000-0198999/detector/")
