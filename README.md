@@ -16,9 +16,9 @@ All event trees should now be in `.hdf5` files in your outdir, including your CO
 
 ```
 bash-4.2$ ls outdir/
-110.0_GeV_-1e-05_eps_50000.0_events_1e3_2e5_ene_100.0_m.csv  130.0_GeV_-5e-06_eps_10000.0_events_1e2_1e3_ene_50_m.csv  CORSIKA.csv
-115.0_GeV_-5e-06_eps_250000.0_events_1e2_2e5_ene_50.0_m.csv  130.0_GeV_-5e-06_eps_10000.0_events_1e3_1e6_ene_50_m.csv  plots
-115.0_GeV_-5e-06_eps_2500.0_events_1e2_1e4_ene_50.0_m.csv    CORSIKA_100nevents.hdf5
+(tga) bash-4.2$ ls outdir/June2024/
+CORSIKA.hdf5                                                                                               DarkLeptonicScalar.mass-110.eps-3e-05.nevents-50000.0_ene_1000.0_10000.0_gap_75.0_240531.210876733.hdf5  plots
+DarkLeptonicScalar.mass-110.eps-3e-05.nevents-150000.0_ene_2000.0_15000.0_gap_100.0_240602.210981234.hdf5  DarkLeptonicScalar.mass-115.eps-2e-5.nevents-50000_ene_1e2_1e4_gap_100_240510.208851130.hdf5
 ```
 
 ## 2. Histogram & Plotting: 
@@ -27,8 +27,3 @@ bash-4.2$ ls outdir/
 
 Plotting stacks for signal and backgorund (with background weights) can be done by using the `--plot` flag. An example run line is: 
 `python src/trackgapana.py --plot --type stack` 
-
-
----
-To do: 
-- [] some version issue with HDF5... causing plotting to abort

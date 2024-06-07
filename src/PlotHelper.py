@@ -2,18 +2,13 @@
 import icecube
 from icecube import icetray, dataio, dataclasses, MuonGun, hdfwriter, simclasses
 from icecube.icetray import I3Tray
-import glob
 import pandas as pd
 import re
-import logging
-import os
 import yaml
 
-# set global logger
-logger = logging.getLogger(__name__)
-
 class PlotHelper(object):
-    def __init__(self):
+    def __init__(self, config_var):
+        self.config_var = config_var
         pass
 
     def loadConfig(self):
@@ -60,10 +55,8 @@ class PlotHelper(object):
 
         with open(args.config_var, 'r') as f:
             treeVars = yaml.full_load(f)
-        for var_name, values in treeVars['vars'][var].items():
+
+        for name, values in treeVars['vars'].items():
             bins, min_val, max_val = values
-            var_name = var_name
-            print(f"Variable: {var_name}, Bins: {bins}, Min: {min_val}, Max: {max_val}")
 
-
-        return var_name, bins, min_val, max_val
+        return bins, min_val, max_val
