@@ -48,6 +48,7 @@ class VarCalculator(object):
         with open(args.config_var, 'r') as f:
             config = yaml.full_load(f)
         vars = list(config["vars"].keys())
+        filter = list(config["filters"].keys())
         tray = I3Tray()
         
         # options required for simweights 
@@ -57,10 +58,11 @@ class VarCalculator(object):
         else: 
             writer = hdfwriter.I3SimHDFWriter
             write_vars = vars
-        logger.debug(f"\n--------------Variables for calculation and booking: {vars}")
+        logger.info(f"\n--------------Variables for calculation and booking: {vars}")
 
         # Add modules to the tray
         tray.Add("I3Reader", filenamelist= filenamelist)
+        tray.Add("I3FilterMask", FilterName=filter)
         tray.Add(Stack, GCDFile = args.gcd_path, vars=vars)
         tray.Add(
             writer,

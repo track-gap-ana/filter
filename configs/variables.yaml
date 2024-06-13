@@ -9,4 +9,6 @@ attri:
   "colorblind"             : [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", 
                               "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5",
                               "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
+filter: 
+    "OfflineMu_24"
 
