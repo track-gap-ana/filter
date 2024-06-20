@@ -2,6 +2,7 @@
 import icecube
 from icecube import icetray, dataio, dataclasses, MuonGun, hdfwriter, simclasses
 from icecube.icetray import I3Tray
+import icecube.filter_tools as filter_tools
 import glob
 import pandas as pd
 import re
@@ -31,9 +32,10 @@ class VarCalculator(object):
                     self.config_var = args.config_var
                     for sig in os.listdir(args.sigs_path):
                         sig_path = args.sigs_path+sig
+                        logging.debug(f"Checking: {sig_path}")
                         if os.path.isdir(sig_path) == True:
                             logging.info(f"On sample: {sig}")
-                            filenamelist= list(glob.glob(sig_path+"/LLPSim*/*.gz"))
+                            filenamelist= list(glob.glob(sig_path+"/*/*.i3*"))
                             outfile = args.outdir+"/"+sig+".hdf5"
                             self.runTray(args, out_file = outfile, filenamelist = filenamelist)
                         
@@ -42,13 +44,15 @@ class VarCalculator(object):
                         
     def runTray(self, args, out_file, filenamelist, weight=False):
         # fast option
-        if args.fast is not None: filenamelist = [filenamelist[0]]
+        if args.fast is True: 
+            logging.info("Fast option is on")
+            filenamelist = [filenamelist[0]]
 
         # Create dictionaries for stack treeogram
         with open(args.config_var, 'r') as f:
             config = yaml.full_load(f)
         vars = list(config["vars"].keys())
-        filter = list(config["filters"].keys())
+        filter = list(config["filter"])
         tray = I3Tray()
         
         # options required for simweights 
@@ -60,9 +64,16 @@ class VarCalculator(object):
             write_vars = vars
         logger.info(f"\n--------------Variables for calculation and booking: {vars}")
 
+        frame_count = [0]
         # Add modules to the tray
         tray.Add("I3Reader", filenamelist= filenamelist)
-        tray.Add("I3FilterMask", FilterName=filter)
+        # Print out the total number of frames that passed the filter
+        tray.Add(
+            lambda frame: bool(frame["OfflineFilterMask"][filter])
+            if "OfflineFilterMask" in frame
+            else False
+        )
+        tray.AddModule(lambda frame: frame_count.append(frame_count.pop() + 1), 'counter')
         tray.Add(Stack, GCDFile = args.gcd_path, vars=vars)
         tray.Add(
             writer,
@@ -70,7 +81,8 @@ class VarCalculator(object):
             output=out_file,
         )
         tray.Execute()
-
+        logger.debug(f"Total number of frames: {frame_count[0]}")
+       
         
 class Geometry(object):
     def __init__(self):
@@ -135,6 +147,7 @@ class Stack(icetray.I3Module):
 
         # Loading var calculator!
         var_calculator = VarCalculatorHelper.VarCalculatorHelper(self.surface, frame) 
+
         for var_name in self.vars:
             var_value = var_calculator.RunCalculator(var_name)     
             # logger.debug(f"Var: {var_name} = {var_value}")       

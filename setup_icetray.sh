@@ -50,6 +50,3 @@ else
     /cvmfs/icecube.opensciencegrid.org/py3-v4.3.0/RHEL_7_x86_64/metaprojects/icetray/v1.8.2/env-shell.sh
 fi
 
-echo "Activating Python virtual environment..."
-source $PYENV/bin/activate
-export PYTHONPATH="build/envs/tga/lib/python3.11/site-packages:$PYTHONPATH"

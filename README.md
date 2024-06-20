@@ -1,10 +1,29 @@
 # microNN_filter
 The following lines and defaults in the code are for cobalt users. Samples need to be redirected if using other machines. 
+## 0. Prime simulation with Base Processing
+Base process for filter studies done with online processing. 
 
+### Usage:
+#### Required:
+`--type`, `--outdir`, `--config_samples`, 
+config_samples.yaml
+- sig subdirs
+- gcd file path
+- production version (zodiac nomenclature)
+
+### Options:
+`--sig_path`
+`--fast`
+
+### Example usage:
+`python src/trackgapana.py --type online --outdir /data/user/vparrish/llp_ana/online`
+
+### Existing Pass3 Filters
+Pull and checkout desired branch 
 ## 1. Variable Calculator: 
 
 #### Background samples: 
-Running to `--redo` the csv files already created with 100 events, explicit calling of the hist flags, and the type of histogram you're making is for later stack plots. Running `--withbkg` means you are doing bkg *only* histograming. 
+Running to `--redo` the csv files already created with 100 events, explicit calling of the hist flags, and the type of histogram you're making is for later stack plots. Running `--withbkg` means you are doing bkg *only* calculations and stack booking. 
 
 `python src/trackgapana.py --redo --var --type stack --withbkg `
 

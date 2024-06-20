@@ -1,0 +1,15 @@
+sig:
+  "/data/user/axelpo/LLP-data/":
+    #"*ene_1000*"
+    #"*ene_2000*"
+    #"*ene_1e2*"
+    #"*ene_1e4*"
+    # "*"
+    "*mass-115*"
+bkg:
+  "/data/sim/IceCube/2020/generated/CORSIKA-in-ice/20904/0198000-0198999/detector/"
+gcd:
+  "/data/user/kath/gcd/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115_withSLCCal.i3.gz"
+
+version:
+  "gemini"

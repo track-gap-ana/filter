@@ -1,0 +1,22 @@
+executable = job.sh
+
+arguments = <pythonscript> \
+ -i <inputfile> \
+ -o <outputfile>_$(ProcId).i3.gz \
+ --gcd <gcdfile> \
+ -s \
+ 
+log = <logdir>job.log.$(ClusterId).$(ProcId)
+output = <outputdir>job.out.$(ClusterId).$(ProcId)
+error = <errdir>job.err.$(ClusterId).$(ProcId)
+notification = never
+
++FileSystemDomain = "foo"
+transfer_input_files = <pythonscript>
+
+request_cpus = <ncpus>
+request_memory = <memory>
+request_disk = <disk>
+request_gpus = <ngpus>
+
+queue <njobs>
