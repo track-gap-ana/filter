@@ -1,7 +1,7 @@
 # microNN_filter
 The following lines and defaults in the code are for cobalt users. Samples need to be redirected if using other machines. 
 ## 0. Prime simulation with Base Processing
-Base process for filter studies done with online processing. 
+Base process for filter studies done with online processing on the condor submission server `submit-1`.
 
 ### Usage:
 #### Required:

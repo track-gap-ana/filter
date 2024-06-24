@@ -12,4 +12,4 @@ gcd:
   "/data/user/kath/gcd/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115_withSLCCal.i3.gz"
 
 version:
-  "gemini"
+  "lateGemini"

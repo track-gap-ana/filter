@@ -1,6 +1,6 @@
 #!/bin/bash
 # simulation parameters
-export NJOBS=100
+export NJOBS=1
 # environment params
 export HOME=$HOME
 export VENV="$HOME/build/envs/tga/bin/activate"
@@ -31,27 +31,30 @@ OUT_DIR=$5
 
 # job file
 export PYTHONSCRIPT=/home/vparrish/icecube/llp_ana/reco_studies/icetray/src/online_filterscripts/resources/scripts/PFRaw_to_DST.py
-export OUTPUTDIR=$OUT_DIR/output/$VERSION/$CURRENTDATE/$SIG_TYPE
-export ERRORDIR=$OUT_DIR/error/$VERSION/$CURRENTDATE/$SIG_TYPE
-export LOGDIR=$OUT_DIR/log/$VERSION/$CURRENTDATE/$SIG_TYPE
+export OUTPUTDIR=$OUT_DIR/output/$VERSION/$CURRENTDATE/$SIG_TYPE/
+export ERRORDIR=$OUT_DIR/error/$VERSION/$CURRENTDATE/$SIG_TYPE/
+export LOGDIR=/scratch/vparrish/
+
+export BASENAME=$(basename $INPUTFILE .i3.gz)
+
+# Ensure all directories exist
+mkdir -p $EXEDIR
+mkdir -p $OUTPUTDIR
+mkdir -p $ERRORDIR
+
+echo "EXE DIRECTORY: $EXEDIR"
 echo "OUTPUT DIRECTORY: $OUTPUTDIR"
 echo "LOG DIRECTORY: $LOGDIR"
 
 
-# Ensure all directories exist
-mkdir -p $EXEDIR
-echo "EXE DIRECTORY: $EXEDIR"
-mkdir -p $OUTPUTDIR
-mkdir -p $LOGDIR
+export BASENAME="${VERSION}_online_preprocess_${BASENAME}"
 
-export OUTPUTFILE=$OUTPUTDIR/"online_filter_${SIG_TYPE}_$VERSION"
 export GCDFILE=$GCD_FILE
-echo "OUTPUT FILE: $OUTPUTFILE"
 
 # Transform condor script
 sed -e 's#<pythonscript>#'$PYTHONSCRIPT'#g' \
     -e 's#<outputdir>#'$OUTPUTDIR'#g' \
-    -e 's#<outputfile>#'$OUTPUTFILE'#g' \
+    -e 's#<basename>#'$BASENAME'#g' \
     -e 's#<inputfile>#'$INPUTFILE'#g' \
     -e 's#<gcdfile>#'$GCDFILE'#g' \
     -e 's#<logdir>#'$LOGDIR'#g' \
@@ -68,6 +71,7 @@ sed -e 's#<pythonscript>#'$PYTHONSCRIPT'#g' \
 
 # transform job script
 sed -e 's#<venv>#'$VENV'#g' \
+    -e 's#<icetrayenv>#'$ICETRAYENV'#g' \
     $JOBFILETEMPLATE > "$EXEDIR/job.sh"
     # copy example of run file to log directory
     cp "$EXEDIR/job.sh" "$LOGDIR/job_example.sh"
@@ -77,7 +81,7 @@ echo "CALLING CONDOR SERVICE:"
 cd $EXEDIR
 
 # Submit the job to Condor
-condor_submit condor.submit
+# condor_submit condor.submit
 
 #back to original directory
 echo "back to the original directory"

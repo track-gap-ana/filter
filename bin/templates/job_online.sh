@@ -9,6 +9,7 @@ eval $(/cvmfs/icecube.opensciencegrid.org/py3-v4.3.0/setup.sh)
 # enter icetray and virtual environment, then run script
 <icetrayenv> << EOF
 source <venv>
+
 python $@
 
 EOF

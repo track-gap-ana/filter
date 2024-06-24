@@ -1,15 +1,22 @@
-executable = job.sh
+executable = job_online.sh
+
+export basename=$(basename $(infile) .i3.gz)
 
 arguments = <pythonscript> \
- -i <inputfile> \
- -o <outputfile>_$(ProcId).i3.gz \
+ -i $(Infile) \
+ -o <outputdir><basename>_$(ClusterId).i3.gz \
  --gcd <gcdfile> \
  -s \
  
-log = <logdir>job.log.$(ClusterId).$(ProcId)
-output = <outputdir>job.out.$(ClusterId).$(ProcId)
-error = <errdir>job.err.$(ClusterId).$(ProcId)
+log = <logdir><basename>.job.log.$(ClusterId).$(ProcId)
+output = <outputdir><basename>.job.out.$(ClusterId).$(ProcId)
+error = <errdir><basename>.job.err.$(ClusterId).$(ProcId)
 notification = never
+
+# Don't send an email for every job, just the overall dag
+notification   = never 
+getenv         = true
+universe       = vanilla
 
 +FileSystemDomain = "foo"
 transfer_input_files = <pythonscript>
