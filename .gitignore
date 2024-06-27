@@ -1,4 +1,7 @@
 *__*
+*.log
+*.out
 outdir/*
 build
 src/envs
+condor_exe_dirs/

@@ -1,24 +1,57 @@
-executable = <icetrayenv>
+#############################################
+#this shell script will call my python script for condor 
+#  (condor is the batch scheduler for NPX3)
+# This takes variables defined in the DAG file whose names 
+# Run using command $condor_submit condor.submit
+# (if necess, kill with $ condor_rm jobnum or $ condor_rm myusername
+# 
+# For more cluster help, see also:
+# https://wiki.icecube.wisc.edu/index.php/Condor/BestPractices#Quick_test_jobs
+# or 
+# icecube-computing <icecube-computing@icecube.wisc.edu>
+###############################################
 
-arguments = <pythonscript> \
- -i $(Infile) \
- -o <outputdir>$(basename)_$(ClusterId).i3.gz \
- --gcd $(gcdfile) \
- -s \
- 
-log = <logdir>$(basename).job.log.$(ClusterId).$(ProcId)
-output = <outputdir>$(basename).job.out.$(ClusterId).$(ProcId)
-error = <errdir>$(basename).job.err.$(ClusterId).$(ProcId)
-notification = never
+# this is where the output of the job (usually .i3) goes
+Outdir = <outputdir>
 
-# Don't send an email for every job, just the overall dag
-notification   = never 
-getenv         = true
-universe       = vanilla
+## Will your job take longer than 12 hours, or are you testing the interface?
+## Then un-comment one of these. 
+# +AccountingGroup="long.gladstone"
+# +AccountingGroup="quicktest.gladstone"
+# +AccountingGroup="gpu.gladstone"
+
+## Condor 7.8 (new on npx4 Dec 2012): Jobs requiring more than 2GB of memory or 1CPU can now add:
 
 request_cpus = <ncpus>
 request_memory = <memory>
 request_disk = <disk>
 request_gpus = <ngpus>
 
-queue <njobs>
+# Run the environment script from icetray before anything else
+executable = <icetrayenv>
+
+####################################
+# Change the following to folders where you have write permissions
+# (eg "/data/user/you" not "/data/user/gladstone")
+# They don't need to change from job to job. 
+###################################
+
+# this is where the log, out, err files will live
+output = <logdir>$(Jobname)_$(basename).job.out.$(ClusterId).$(ProcId)
+error = <errdir>$(Jobname)_$(basename).job.err.$(ClusterId).$(ProcId)
+
+#  one log file for all jobs:
+#  Note that it's set to overwrite the next time your run a job 
+log = /scratch/$(whoami)/$(Jobname)_$(basename)_condor.log
+
+# Don't send an email for every job, just the overall dag
+notification   = never 
+getenv         = true
+universe       = vanilla
+
+########################(drum roll..... SUBMIT!)####################
+# These arguments match the way I set up my executable to take arguments; you 
+# may have fewer than this.
+
+Arguments = <pythonscript> -i $(Infile) -o <outputdir>$(Jobname)_$(basename)_$(ClusterId).i3.gz --gcd $(GCD_FILE) -s
+queue

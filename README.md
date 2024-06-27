@@ -14,9 +14,10 @@ config_samples.yaml
 ### Options:
 `--sig_path`
 `--fast`
+`--version`
 
 ### Example usage:
-`python src/trackgapana.py --type online --outdir /data/user/vparrish/llp_ana/online`
+`python src/trackgapana.py --type online --outdir /data/user/vparrish/llp_ana/online --fast --version v2`
 
 ### Existing Pass3 Filters
 Pull and checkout desired branch 

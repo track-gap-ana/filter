@@ -4,8 +4,8 @@ sig:
     #"*ene_2000*"
     #"*ene_1e2*"
     #"*ene_1e4*"
-    # "*"
-    "*mass-115*"
+    "*"
+    # "*mass-115*"
 bkg:
   "/data/sim/IceCube/2020/generated/CORSIKA-in-ice/20904/0198000-0198999/detector/"
 gcd:

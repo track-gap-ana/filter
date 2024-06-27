@@ -2,6 +2,7 @@ import os
 import yaml
 import logging
 import glob
+import datetime
 
 #!/usr/bin/env python
 
@@ -59,8 +60,14 @@ class Online:
             return "full"
         if self.args.fast:
             return f"{signal_type}_test"
-        return signal_type
-
+        return signal_type.replace("*","")
+    def setExeDir(self):
+        CURRENTDATE = datetime.datetime.now().strftime("%d%m%y")    
+        EXEDIR = os.path.join(os.getcwd(), "condor_exe_dirs", f"condor-{CURRENTDATE}")
+        if not os.path.exists(EXEDIR):
+            os.makedirs(EXEDIR)
+        return EXEDIR
+    
     def process_files(self):
         """
         Processes the files.
@@ -68,32 +75,32 @@ class Online:
         logger.info("Processing files...")
         logger.debug(f'TOP_DIR: {self.TOP_DIR}')
         logger.info(f'SIGNAL_TYPES SELECTED: {self.SIGNAL_TYPES}\n')
-
-        with open("myJobs.dag", "w") as dag_file:
+        EXEDIR = self.setExeDir()
+        with open(f"{EXEDIR}/myJobs.dag", "w") as dag_file:
             for signal_type in self.SIGNAL_TYPES:
-                command = f'. builddag.sh {self.args.outdir} {self.VERSION} {signal_type.replace("*","")}'
-                os.system(command)
                 logger.info(f'Processing signal type: {signal_type}')
                 dir_paths = glob.glob(f"{self.TOP_DIR}{signal_type}")
                 signal_type = self.alter_name(signal_type)
+                os.system( f'. builddag.sh {self.args.outdir} {self.VERSION} {signal_type} {EXEDIR}')
+                logger.debug(f'Execution directory: {EXEDIR}')
                 dir_counter = 0  # Initialize directory counter
                 for dir_path in dir_paths:
                     for indir, dirnames, filenames in os.walk(dir_path):
                         if self.args.fast and dir_counter >= 5:  # Check if fast mode is enabled and limit is reached
                             break  # Exit the loop after processing 5 directories
-                        logger.debug(f'Processing directory {indir}')
                         for infile in filenames:
-                            if infile.endswith('.i3') or infile.endswith('.i3.gz'):
+                            if infile.startswith('LLP') and (infile.endswith('.i3') or infile.endswith('.i3.gz')):
                                 input_file = os.path.join(indir, infile)
                                 BASENAME = os.path.basename(infile[:-7])
-                                JOBNAME = f"{self.VERSION}_online_preprocess"
-                                JOBID = f"{JOBNAME}_{BASENAME}"
-                                dag_file.write(f"JOB {JOBID} DAGOneJob.submit\n")
-                                dag_file.write(f"VARS {JOBID} JOBNAME={JOBNAME} GCD_FILE={self.GCD_PATH} INFILE={input_file} BASENAME={BASENAME}\n")
+                                UNIQUEJOBID = indir.split("/")[-1]
+                                JOBNAME = f'{self.VERSION}_{signal_type}_online_preprocess_{datetime.datetime.now().strftime("%m%d%Y")}'
+                                JOBID = f"{JOBNAME}_{UNIQUEJOBID}_{self.args.version}"
+                                dag_file.write(f"JOB {JOBID} {EXEDIR}/DAGOneJob.submit\n")
+                                dag_file.write(f'VARS {JOBID} JOBNAME="{JOBNAME}" GCD_FILE="{self.GCD_PATH}" INFILE="{input_file}" BASENAME="{BASENAME}"\n')
                         dir_counter += 1  # Increment directory counter
                         if self.args.fast and dir_counter >= 5:  # Check again in case the limit is reached within the inner loop
                             break
-        os.system(". SubmitDag.sh")
+        os.system(f". SubmitDag.sh {EXEDIR}")
         
         # for signal_type in self.SIGNAL_TYPES:
         #     logger.info(f'Processing signal type: {signal_type}')

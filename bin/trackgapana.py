@@ -99,6 +99,9 @@ if __name__ == "__main__":
     parser.add_argument('--config-var', '-cv', default = "configs/variables.yaml" ,help="config yaml variable file")
     parser.add_argument('--config-samples', '-cs', default = "configs/samples.yaml" ,help="config yaml samples file")    
     parser.add_argument('--outdir', "-o", default="outdir")
+
+    # condor / DAGMan submission only arguments
+    parser.add_argument('--version', '-v', default="v1", help="Version of the output files")
     
     #turn on or off
     parser.add_argument('--fast', required=False, action="store_true", help="Run with flag for fast testing")

@@ -45,7 +45,8 @@ eval $(/cvmfs/icecube.opensciencegrid.org/py3-v4.3.0/setup.sh)
 
 read -p "Do you want to load the muon filter icetray? (y/n): " choice
 if [ "$choice" == "y" ]; then
-    /home/vparrish/icecube/llp_ana/reco_studies/icetray/build/env-shell.sh
+	export ICETRAYENV=/home/vparrish/icecube/llp_ana/reco_studies/icetray/build/env-shell.sh
+	$ICETRAYENV
 else
     /cvmfs/icecube.opensciencegrid.org/py3-v4.3.0/RHEL_7_x86_64/metaprojects/icetray/v1.8.2/env-shell.sh
 fi
