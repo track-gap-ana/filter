@@ -1,7 +1,10 @@
 # microNN_filter
 The following lines and defaults in the code are for cobalt users. Samples need to be redirected if using other machines. 
+### Existing Pass3 Filters
+Pull and checkout desired branch 
+
 ## 0. Prime simulation with Base Processing
-Base process for filter studies done with online processing on the condor submission server `submit-1`.
+Base process for filter studies done with online and offline filter processing on the condor submission server `submit-1` using DAGMan submission formats.
 
 ### Usage:
 #### Required:
@@ -10,17 +13,29 @@ config_samples.yaml
 - sig subdirs
 - gcd file path
 - production version (zodiac nomenclature)
+Depedencies: 
+- icetray version with whatever filters will be applied for testing later on
 
-### Options:
+#### Options:
 `--sig_path`
 `--fast`
 `--version`
 
-### Example usage:
-`python src/trackgapana.py --type online --outdir /data/user/vparrish/llp_ana/online --fast --version v2`
+#### Example usage:
+Online: 
+`python src/trackgapana.py --type online --outdir /data/user/vparrish/llp_ana/online --fast --version v1`
+##### Not completely integrated functionality yet -- do not run yet
+Offline:
+`python src/trackgapana.py --type online --sig_path /data/user/vparrish/llp_ana/online --fast --version v1`
+Notes: 
+- the `sig_path` for the offline process must be the same as the `outdir` used in the online process
+- the `outdir` should change to whereever you'd like to keep your offline process samples
+#### DAGman functionaliteis: 
+Monitor jobs: 
+`condor_q`
+Resubmit failed subprocesses:
+ - rerun the original python line from above
 
-### Existing Pass3 Filters
-Pull and checkout desired branch 
 ## 1. Variable Calculator: 
 
 #### Background samples: 
