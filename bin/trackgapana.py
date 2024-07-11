@@ -6,8 +6,9 @@ import yaml
 
 import VarCalculator
 import Plot
-import OnlinePreprocess_condor
-
+import OfflinePreprocess
+import Preprocess_condor
+import Logging
 
 """
 
@@ -29,7 +30,7 @@ class Make(object):
             func
             return True
         
-    def assertConfig(self, args, warning):
+    def checkConfig(self, args, warning):
 
         # Load the config samples file
         with open(args.config_samples, 'r') as file:
@@ -42,11 +43,22 @@ class Make(object):
     # specific functions
     def processOnline(self,args):
         # check samples path consistency
-        self.assertConfig(args, "Using config_samples.yaml provided path.")
+        self.checkConfig(args, "Using config_samples.yaml provided path.")
 
         # execute online processing
-        online = OnlinePreprocess_condor.Online(args)
-        online.process_files()
+        online = Preprocess_condor.CondorFilter(args)
+        online.process_online_files()
+    
+    def processOffline(self,args):
+        # execute offline processing
+        # sigs_path should be the outdir of the online processing
+        fast = True if args.fast else False
+        if args.dag is True:
+            offline = Preprocess_condor.CondorFilter(args)
+            offline.process_offline_files()
+        else:
+            offline = OfflinePreprocess.OfflineFilter(outdir=args.outdir, config_samples=args.config_samples, indir=args.sigs_path, fast=fast, dag=True)
+            offline.run()
 
     def makeStackH5(self, args):
         stack = VarCalculator.VarCalculator()
@@ -66,11 +78,8 @@ class Make(object):
         else:
             logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
-        # Define custom log colors
-        logging.addLevelName(logging.DEBUG, "\033[1;34m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
-        logging.addLevelName(logging.INFO, "\033[1;32m%s\033[1;0m" % logging.getLevelName(logging.INFO))
-        logging.addLevelName(logging.WARNING, "\033[1;33m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
-        logging.addLevelName(logging.ERROR, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+        # Set special logging colors and rules
+        Logging.specialRules()
 
         # make h5 files
         if args.var: self.makeStackH5(args)
@@ -78,6 +87,10 @@ class Make(object):
         # make online files
         if args.type == "online":
             self.processOnline(args)
+        
+        # make offline files from online files
+        if args.type == "offline":
+            self.processOffline(args)
 
         # make stacks with new variables
         if args.type == "stack":
@@ -101,6 +114,7 @@ if __name__ == "__main__":
     parser.add_argument('--outdir', "-o", default="outdir")
 
     # condor / DAGMan submission only arguments
+    parser.add_argument('--dag', '-D', action="store_true", help="Submit jobs to condor")
     parser.add_argument('--version', '-v', default="v1", help="Version of the output files")
     
     #turn on or off
@@ -108,7 +122,7 @@ if __name__ == "__main__":
     parser.add_argument('--withbkg', "-B", action="store_true")
     parser.add_argument('--plot', '-P', action="store_true")
     parser.add_argument('--var', '-V', action="store_true")
-    parser.add_argument('--redo', '-R', action="store_true", help='Redo varograming')
+    parser.add_argument('--redo', '-R', action="store_true", help='Redo variable calculation and h5 file creation')
     parser.add_argument('--debug', '-d', action="store_true", help="Run with flag for debug logging")
 
 

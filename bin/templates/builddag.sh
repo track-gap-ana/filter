@@ -5,15 +5,22 @@ OUT_DIR=$1
 VERSION=$2
 SIG_TYPE=$3
 EXEDIR=$4
+PROCESS=$5
 
 # environment params
 export HOME=$HOME
 export EXDIR=$EXEDIR
 export CURRENTDATE=`date +%d%m%y`
-export PYTHONSCRIPT=/home/vparrish/icecube/llp_ana/reco_studies/icetray/src/online_filterscripts/resources/scripts/PFRaw_to_DST.py
+
+if [ "$PROCESS" == "online" ]; then
+    export PYTHONSCRIPT=/home/vparrish/icecube/llp_ana/reco_studies/icetray/src/online_filterscripts/resources/scripts/PFRaw_to_DST.py
+    export CONDORSCRIPT=$(pwd)/bin/templates/DAGOneJobTemplate_online.submit
+else
+    export PYTHONSCRIPT=/home/vparrish/icecube/llp_ana/reco_studies/icetray/src/offline_filterscripts/resources/scripts/filter_SDST.py
+    export CONDORSCRIPT=$(pwd)/bin/templates/DAGOneJobTemplate_offline.submit
+fi
 
 # script used for condorVES
-export CONDORSCRIPT=$(pwd)/bin/templates/DAGOneJobTemplate.submit
 echo "CONDOR SCRIPT: $CONDORSCRIPT"
 
 # define output and error directories

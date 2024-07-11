@@ -8,7 +8,7 @@ import datetime
 
 logger = logging.getLogger(__name__)
 
-class Online:
+class CondorFilter():
     """
     Class for online preprocessing of trigger files.
 
@@ -48,19 +48,21 @@ class Online:
     def alter_name(self, signal_type):
         """
         Alters the name of a signal type.
-
+    
         Args:
             signal_type: The original signal type located in samples.yaml.
-
+    
         Returns:
             The altered signal type.
-
+    
         """
-        if "*" == signal_type:
-            return "full"
-        if self.args.fast:
-            return f"{signal_type}_test"
+        if self.args.fast is True:
+            print("fast mode")
+            signal_type = "test"
+        if "*" in signal_type:
+            signal_type = "full"
         return signal_type.replace("*","")
+    
     def setExeDir(self):
         CURRENTDATE = datetime.datetime.now().strftime("%d%m%y")    
         EXEDIR = os.path.join(os.getcwd(), "condor_exe_dirs", f"condor-{CURRENTDATE}")
@@ -68,7 +70,7 @@ class Online:
             os.makedirs(EXEDIR)
         return EXEDIR
     
-    def process_files(self):
+    def process_online_files(self):
         """
         Processes the files.
         """
@@ -101,19 +103,39 @@ class Online:
                         if self.args.fast and dir_counter >= 5:  # Check again in case the limit is reached within the inner loop
                             break
         os.system(f". SubmitDag.sh {EXEDIR}")
+
+    def process_offline_files(self):
+        """
+        Processes the files.
+        """
+        logger.info("Processing files...")
+        logger.info(f'SIGNAL_TYPES SELECTED: {self.SIGNAL_TYPES}\n')
+        EXEDIR = self.setExeDir()
+        with open(f"{EXEDIR}/myJobs.dag", "w") as dag_file:
+            for signal_type in self.SIGNAL_TYPES:
+                logger.info(f'Processing signal type: {signal_type}')
+                signal_type = self.alter_name(signal_type)
+                os.system( f'. builddag.sh {self.args.outdir} {self.VERSION} {signal_type} {EXEDIR} {self.args.type}')
+                logger.debug(f'Execution directory: {EXEDIR}')
+                # bit hacky but the dir has bias files in it as well - need to filter them out at some point, but for now looping through the first 100 will only select 6 non-bias files to process
+                if self.args.fast is True: indir = os.listdir(self.args.sigs_path)[:100]
+                else: indir = os.listdir(self.args.sigs_path)
+                for infile in indir:
+                    if infile.endswith('.i3.gz') and 'bias' not in infile:
+                        logger.debug(f'Processing file: {infile}')
+                        input_file = os.path.join(self.args.sigs_path, infile)
+                        BASENAME = "LLPSimulation" + infile.split("LLPSimulation")[1].split(".i3.gz")[0]
+                        JOBNAME = f'{self.VERSION}_{signal_type}_offline_preprocess_{datetime.datetime.now().strftime("%m%d%Y")}'
+                        JOBID = f"{JOBNAME}_{BASENAME}_{self.args.version}"
+                        dag_file.write(f"JOB {JOBID} {EXEDIR}/DAGOneJob.submit\n")
+                        dag_file.write(f'VARS {JOBID} JOBNAME="{JOBNAME}" GCD_FILE="{self.GCD_PATH}" INFILE="{input_file}" OUTDIR="{self.args.outdir}" BASENAME="{BASENAME}"\n')
+
+        os.system(f". SubmitDag.sh {EXEDIR}")
         
-        # for signal_type in self.SIGNAL_TYPES:
-        #     logger.info(f'Processing signal type: {signal_type}')
-        #     indir = glob.glob(f"{self.TOP_DIR}{signal_type}")
-        #     signal_type = self.alter_name(signal_type)
-        #     if self.args.fast: indir = indir[:2]
-        #     command = f'. builddag.sh {indir} {self.VERSION} {self.GCD_PATH} {signal_type.replace("*","")} {self.args.outdir}'
-        #     logger.debug(f'Running shell script with command:\n\n{command}\n')
-        #     os.system(command)
-        #     logger.info(f'File {indir} processed successfully.')
 
 if __name__ == "__main__":
     # Create an instance of the Online class
-    online = Online(args)
+    dag_proc = CondorFilter(args)
     # Call the process_files method
-    online.process_files()
+    dag_proc.process_online_files()
+    dag_proc.process_offline_files()

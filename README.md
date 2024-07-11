@@ -3,17 +3,17 @@ The following lines and defaults in the code are for cobalt users. Samples need 
 ### Existing Pass3 Filters
 Pull and checkout desired branch 
 
-## 0. Prime simulation with Base Processing
-Base process for filter studies done with online and offline filter processing on the condor submission server `submit-1` using DAGMan submission formats.
+## 0a. Online: Prime simulation with Base Processing
+Base process for filter studies done with online processing on the condor submission server `submit-1` using DAGMan submission formats.
 
 ### Usage:
 #### Required:
-`--type`, `--outdir`, `--config_samples`, 
-config_samples.yaml
+`--type`, `--outdir`, `--config_samples`, `config_samples.yaml`, `--dag`
 - sig subdirs
 - gcd file path
 - production version (zodiac nomenclature)
-Depedencies: 
+
+Non-standard module depedencies: 
 - icetray version with whatever filters will be applied for testing later on
 
 #### Options:
@@ -23,18 +23,42 @@ Depedencies:
 
 #### Example usage:
 Online: 
+
 `python src/trackgapana.py --type online --outdir /data/user/vparrish/llp_ana/online --fast --version v1`
-##### Not completely integrated functionality yet -- do not run yet
-Offline:
-`python src/trackgapana.py --type online --sig_path /data/user/vparrish/llp_ana/online --fast --version v1`
+
+## 0b. Offline: Prime simulation with Base Processing
+Base process for filter studies done with offline processing. This can be done locally or on the condor submission server `submit-1` using DAGMan submission formats.
+
+### Usage:
+#### Required:
+`--type`, `--outdir`, `--sigs_path`
+- sig subdirs
+- gcd file path
+- production version (zodiac nomenclature)
+- `sigs_path` that is the path from the online preprocessing 
+
+Non-standard module depedencies: 
+- icetray version with whatever filters will be applied for testing later on
+
+#### Options:
+`--sig_path`
+`--fast`
+`--version`
+`--dag`
+
+Offline *without* DAGMan sub:
+
+`python bin/trackgapana.py --type offline --outdir /data/user/vparrish/llp_ana/offline/ --sigs_path /data/user/vparrish/llp_ana/online/output/lateGemini/260624/full/ --fast --debug`
+
+Offline *with* DAGMan sub: 
+
+`python bin/trackgapana.py --type offline --outdir /data/user/vparrish/llp_ana/offline --sigs_path /data/user/vparrish/llp_ana/online/output/lateGemini/260624/full/ --fast --debug --dag`
+
+
 Notes: 
 - the `sig_path` for the offline process must be the same as the `outdir` used in the online process
-- the `outdir` should change to whereever you'd like to keep your offline process samples
-#### DAGman functionaliteis: 
-Monitor jobs: 
-`condor_q`
-Resubmit failed subprocesses:
- - rerun the original python line from above
+- the `outdir` should change to where ever you'd like to keep your offline process samples
+- double check your `samples.yaml` config file before running. Please keep Zodaic version the same between online and offline processes.
 
 ## 1. Variable Calculator: 
 
@@ -63,3 +87,16 @@ DarkLeptonicScalar.mass-110.eps-3e-05.nevents-150000.0_ene_2000.0_15000.0_gap_10
 
 Plotting stacks for signal and backgorund (with background weights) can be done by using the `--plot` flag. An example run line is: 
 `python src/trackgapana.py --plot --type stack` 
+
+
+## Misc information
+
+#### DAGman functionaliteis: 
+
+*You need to first be signed into the `submit-1` submission cluster system through `pub.icecube`.*
+Monitor jobs: 
+
+`condor_q`
+
+Resubmit failed subprocesses:
+ - rerun the original python line from above
