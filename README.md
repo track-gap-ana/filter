@@ -24,7 +24,7 @@ Non-standard module depedencies:
 #### Example usage:
 Online: 
 
-`python src/trackgapana.py --type online --outdir /data/user/vparrish/llp_ana/online --fast --version v1`
+`python bin/trackgapana.py --type online --outdir /data/user/vparrish/llp_ana/online --fast --version v1`
 
 ## 0b. Offline: Prime simulation with Base Processing
 Base process for filter studies done with offline processing. This can be done locally or on the condor submission server `submit-1` using DAGMan submission formats.
@@ -61,16 +61,28 @@ Notes:
 - double check your `samples.yaml` config file before running. Please keep Zodaic version the same between online and offline processes.
 
 ## 1. Variable Calculator: 
+##### Required:
 
+`--type`
+`--var`
+
+##### Options:
+`--dag` : use if you have produced the samples you want to use in the calculator were created with DAGMan (directory structure differences)
+`--redo` : use if you have already created hdf5 files 
+`--withbkg`
+`--fast`
 #### Background samples: 
 Running to `--redo` the csv files already created with 100 events, explicit calling of the hist flags, and the type of histogram you're making is for later stack plots. Running `--withbkg` means you are doing bkg *only* calculations and stack booking. 
 
-`python src/trackgapana.py --redo --var --type stack --withbkg `
+`python bin/trackgapana.py --redo --var --type stack --withbkg `
 
 ##### Signal samples: 
 
 Same as bkg except without `--withbkg` flag
-`python src/trackgapana.py --redo --var --type stack`
+`python bin/trackgapana.py --redo --var --type stack`
+
+When you have samples produced with DAGMan jobs: 
+`python bin/trackgapana.py --var --type stack -sp /data/user/vparrish/llp_ana/offline/output/lateGemini/110724/test/ -o outdir/new_muon_filter/post_filter/apply --debug --dag --redo --fast` 
 
 All event trees should now be in `.hdf5` files in your outdir, including your CORSIKA file (with calculated variables plus relevant variables for weighting during plotting), and signal files.
 
@@ -84,9 +96,17 @@ DarkLeptonicScalar.mass-110.eps-3e-05.nevents-150000.0_ene_2000.0_15000.0_gap_10
 ## 2. Histogram & Plotting: 
 
 ### Stacks
+##### Required:
+
+`--type`
+`--outdir`
+`--plot`
+
+##### Options:
+`--redo` : use if you have already created plots 
 
 Plotting stacks for signal and backgorund (with background weights) can be done by using the `--plot` flag. An example run line is: 
-`python src/trackgapana.py --plot --type stack` 
+`python bin/trackgapana.py --plot --type stack` 
 
 
 ## Misc information

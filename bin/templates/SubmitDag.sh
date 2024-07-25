@@ -1,9 +1,6 @@
 #!/bin/bash
-echo "I'm in SubmitDag.sh"
 # define exepath to avoid condor incident
-export CURRENTDATE=`date +%d%m%y`
 export EXEDIR=$1
-echo "EXECUTION DIRECTORY: $EXEDIR"
 current_dir=$(pwd)  # Store the current directory
 
 # Ensure all directories exist
@@ -27,9 +24,11 @@ echo "CALLING DAGMAN SERVICE:"
 read -p "Do you want to submit the jobs? (y/n): " answer
 if [[ $answer == "y" ]]; then
     # Assuming you want to remove -config or replace it with an actual config file path
-    condor_submit_dag "$EXEDIR/myJobs.dag"
+    condor_submit_dag -f "$EXEDIR/myJobs.dag"
 elif [[ $answer == "n" ]]; then
-    echo "Exiting without submitting jobs."
+    echo "Exiting without submitting jobs. Writing the DAGMan files to the execution directory."
+    echo "$EXEDIR/myJobs.dag"
+    condor_submit_dag -no_submit "$EXEDIR/myJobs.dag"
     exit 0
 else
     echo "Invalid input. Exiting..."

@@ -10,49 +10,88 @@ import logging
 import os
 import yaml
 import VarCalculatorHelper
+import ConfigHelper
 
 # set global logger
 logger = logging.getLogger(__name__)
 
 class VarCalculator(object):
 
+    def __init__(self, args):
+        self.config=ConfigHelper.ConfigHelper(config_var=args.config_var, config_samples=args.config_samples)
+        # Load the config_samples file
+        self.sig_top = self.config.loadSig()
+        self.sig_type = self.config.loadSigType()
+        self.gcd = self.config.loadGCD()
+        self.version = self.config.loadVersion()
+
+        # from config_variables
+        self.vars = self.config.loadVars()
+        self.filter = self.config.loadFilter()
+
+        # outdir
+        self.outdir = self.config.makeDirs(args.outdir)
+    
+    def dag_fileStructure(self, args):
+        logger.warning("Running with DAG structure")
+        logger.info(f"\n--------------Processing signal types: {self.sig_type}")
+        for sig in self.sig_type:
+            filenamelist = list(glob.glob(args.sigs_path+sig+"*i3*"))
+            sig_name=self.config.alter_name(sig, args.fast)
+            outfile = os.path.join(self.outdir, sig_name+".hdf5")
+            logger.info(f"\n--------------Producing hdf5 for {filenamelist}")
+            logger.debug(f"Output file: {outfile}")
+            logger.debug(f'gcd file path: {args.gcd_path}')
+            self.runTray(args, out_file = outfile, filenamelist = filenamelist)
+
+    def local_rawFileStructure(self, args):
+        for sig in os.listdir(args.sigs_path):
+            sig_path = args.sigs_path+sig
+            logging.debug(f"Checking: {sig_path}")
+            if os.path.isdir(sig_path) == True:
+                logging.info(f"\n--------------On sample: \n{sig}")
+                filenamelist= list(glob.glob(sig_path+"/*/*.i3*"))
+                outfile = self.outdir+"/"+sig+".hdf5"
+                self.runTray(args, out_file = outfile, filenamelist = filenamelist)
+            else: 
+                pass
+            
+    def local_filterFileStructure(self, args):
+        for sig in os.listdir(args.sigs_path):
+            self.runTray(args, out_file = self.outdir+"/"+"test.hdf5", filenamelist = [args.sigs_path+sig])
+
     def loopTray(self,args):
-            logging.info("Making treeograms")
-        
+            logging.info("\n--------------Making variables")        
             # make 1 bkg tree
             if args.withbkg is True: 
-                logging.info("Background treeograming")
+                logging.info("\n--------------Background booking is turned of and running")
                 filenamelist= list(glob.glob(args.bkg_path+"/*zst"))
                 # logging.debug(filenamelist)
-                outfile = args.outdir+"/CORSIKA.hdf5"
+                outfile = self.outdir+"/CORSIKA.hdf5"
                 self.runTray(args, out_file = outfile, filenamelist = filenamelist, weight=True)
             else:
                 # make all other trees
                 if args.sigs_path is not None:
                     self.config_var = args.config_var
-                    for sig in os.listdir(args.sigs_path):
-                        sig_path = args.sigs_path+sig
-                        logging.debug(f"Checking: {sig_path}")
-                        if os.path.isdir(sig_path) == True:
-                            logging.info(f"On sample: {sig}")
-                            filenamelist= list(glob.glob(sig_path+"/*/*.i3*"))
-                            outfile = args.outdir+"/"+sig+".hdf5"
-                            self.runTray(args, out_file = outfile, filenamelist = filenamelist)
-                        
-                        else: 
-                            pass
-                        
+                    logger.debug(f"Config file: {self.config_var}")
+                    logger.debug(f'Running on: {args.sigs_path}')
+                    if args.dag is True: self.dag_fileStructure(args)
+                    else: self.local_filterFileStructure(args)
+
     def runTray(self, args, out_file, filenamelist, weight=False):
         # fast option
         if args.fast is True: 
-            logging.info("Fast option is on")
-            filenamelist = [filenamelist[0]]
+            logging.warning("Fast option is on")
+            filenamelist = filenamelist[:2]
+            logger.debug(f"Fast option, only computing these files: {filenamelist}")
 
         # Create dictionaries for stack treeogram
         with open(args.config_var, 'r') as f:
             config = yaml.full_load(f)
         vars = list(config["vars"].keys())
-        filter = list(config["filter"])
+        filter = config["filter"]
+        logger.info(f"\n--------------Variables for calculation and booking: \n{vars}")
+        logger.info(f"\n--------------Filter used: \n{filter}")
         tray = I3Tray()
         
         # options required for simweights 
@@ -62,7 +101,6 @@ class VarCalculator(object):
         else: 
             writer = hdfwriter.I3SimHDFWriter
             write_vars = vars
-        logger.info(f"\n--------------Variables for calculation and booking: {vars}")
 
         frame_count = [0]
         # Add modules to the tray
