@@ -31,26 +31,17 @@ class VarCalculator(object):
 
         # outdir
         self.outdir = self.config.makeDirs(args.outdir)
-    
-    def dag_fileStructure(self, args):
-        logger.warning("Running with DAG structure")
-        logger.info(f"\n--------------Processing signal types: {self.sig_type}")
-        for sig in self.sig_type:
-            filenamelist = list(glob.glob(args.sigs_path+sig+"*i3*"))
-            sig_name=self.config.alter_name(sig, args.fast)
-            outfile = os.path.join(self.outdir, sig_name+".hdf5")
-            logger.info(f"\n--------------Producing hdf5 for {filenamelist}")
-            logger.debug(f"Output file: {outfile}")
-            logger.debug(f'gcd file path: {args.gcd_path}')
-            self.runTray(args, out_file = outfile, filenamelist = filenamelist)
 
-    def local_rawFileStructure(self, args):
+
+    def fileStructure(self, args):
         for sig in os.listdir(args.sigs_path):
             sig_path = args.sigs_path+sig
-            logging.debug(f"Checking: {sig_path}")
-            if os.path.isdir(sig_path) == True:
+            if os.path.isdir(sig_path) and os.listdir(sig_path) and "out" not in sig:
                 logging.info(f"\n--------------On sample: \n{sig}")
-                filenamelist= list(glob.glob(sig_path+"/*/*.i3*"))
+                if args.dag is True:
+                    filenamelist= list(glob.glob(sig_path+"/*i3*"))
+                else:
+                    filenamelist= list(glob.glob(sig_path+"/*/*.i3*"))
                 outfile = self.outdir+"/"+sig+".hdf5"
                 self.runTray(args, out_file = outfile, filenamelist = filenamelist)
             else: 
@@ -75,15 +66,15 @@ class VarCalculator(object):
                     self.config_var = args.config_var
                     logger.debug(f"Config file: {self.config_var}")
                     logger.debug(f'Running on: {args.sigs_path}')
-                    if args.dag is True: self.dag_fileStructure(args)
-                    else: self.local_filterFileStructure(args)
+                    self.fileStructure(args)
 
     def runTray(self, args, out_file, filenamelist, weight=False):
         # fast option
         if args.fast is True: 
-            logging.warning("Fast option is on")
-            filenamelist = filenamelist[:2]
-            logger.debug(f"Fast option, only computing these files: {filenamelist}")
+            filenamelist = filenamelist[:1]
+            logger.debug(f"Fast option, only computing one file: {filenamelist}")
+        else: 
+            logger.debug(f"Running on all files: {filenamelist}")
 
         # Create dictionaries for stack treeogram
         with open(args.config_var, 'r') as f:
@@ -91,7 +82,6 @@ class VarCalculator(object):
         vars = list(config["vars"].keys())
         filter = config["filter"]
         logger.info(f"\n--------------Variables for calculation and booking: \n{vars}")
-        logger.info(f"\n--------------Filter used: \n{filter}")
         tray = I3Tray()
         
         # options required for simweights 
@@ -106,11 +96,16 @@ class VarCalculator(object):
         # Add modules to the tray
         tray.Add("I3Reader", filenamelist= filenamelist)
         # Print out the total number of frames that passed the filter
-        tray.Add(
-            lambda frame: bool(frame["OfflineFilterMask"][filter])
-            if "OfflineFilterMask" in frame
-            else False
-        )
+        if filter is not None: 
+            logger.warning(f"Filtering on:-------------\n {filter}")
+            tray.Add(
+                lambda frame: bool(frame["OfflineFilterMask"][filter])
+                if "OfflineFilterMask" in frame
+                else False
+            )
+        else: 
+            logger.warning(f"-------------\n No filter applied")
+            out_file = out_file.replace(".hdf5", "_noFilter.hdf5")
         tray.AddModule(lambda frame: frame_count.append(frame_count.pop() + 1), 'counter')
         tray.Add(Stack, GCDFile = args.gcd_path, vars=vars)
         tray.Add(

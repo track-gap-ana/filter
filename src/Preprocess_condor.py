@@ -4,6 +4,7 @@ import logging
 import glob
 import datetime
 import socket
+import re
 
 import ConfigHelper
 
@@ -53,11 +54,12 @@ class CondorFilter():
         """
         with open(self.args.config_samples, 'r') as file:
             samples = yaml.safe_load(file)
-
-        self.TOP_DIR = list(samples['sig'].keys())[0]
-        self.SIGNAL_TYPES = [samples['sig'][self.TOP_DIR]]
+        self.DIR_TYPES = list(samples['sig'].keys())[0]
+        self.SIGNAL_TYPES = [samples['sig'][self.DIR_TYPES]]
         self.GCD_PATH = samples['gcd']
         self.VERSION = samples['version']
+
+        self.TOP_DIR = self.args.sigs_path
 
     def alter_name(self, signal_type):
         """
@@ -97,7 +99,69 @@ class CondorFilter():
         self.ConfigHelper.makeDirs(os.path.join(self.LOGDIR, SUB_DIR))
         self.ConfigHelper.makeDirs(os.path.join(self.ERRORDIR, SUB_DIR))
     
+    def writeDAG(self, counter, filenames, job_suffix, dag_file, indir, SUB_DIR):
+        for infile in filenames:
+            if 'LLPSimulation' in infile and (infile.endswith('.i3') or infile.endswith('.i3.gz')):
+                logger.debug(f'Processing file: {infile}')
+                input_file = os.path.join(indir, infile)
+                BASENAME = os.path.basename(infile[:-7])
+                if self.args.type == 'online':
+                    UNIQUEJOBID = indir.split("/")[-1]
+                else: # Offline
+                    UNIQUEJOBID = re.search(r'(LLPSimulation.*?\.i3(?:\.gz)?)$', infile).group(1)
+                JOBNAME = f'{self.VERSION}_{self.signal_type_name}_{job_suffix}_{datetime.datetime.now().strftime("%m%d%Y")}'
+                JOBID = f"{JOBNAME}_{UNIQUEJOBID}_{self.args.version}"
+                logger.debug(f'JOBID: {JOBID}')
+                logger.debug(f'JOBNAME: {JOBNAME}')
+                dag_file.write(f"JOB {JOBID} {self.EXEDIR}/DAGOneJob.submit\n")
+                dag_file.write(f'VARS {JOBID} JOBNAME="{JOBNAME}" SUBDIR="{SUB_DIR}" GCD_FILE="{self.GCD_PATH}" INFILE="{input_file}" BASENAME="{BASENAME}"\n')
+                counter += 1  # Increment file counter
+            if self.args.fast and counter >= 5:  # Check again in case the limit is reached within the inner loop
+                break
+    def process_files(self, signal_types, job_suffix):
+        """
+        Generalized function to process files with directory counter logic.
+        """
+        logger.info("Processing files...")
+        logger.info(f'SIGNAL_TYPES SELECTED: {signal_types}\n')
+        self.setDirs(exedirOnly=True)
+        with open(f"{self.EXEDIR}/myJobs.dag", "w") as dag_file:
+            for signal_type in signal_types:
+                logger.info(f'Processing signal type: {signal_type}')
+                dir_paths = glob.glob(f"{self.TOP_DIR}{signal_type}")
+                self.signal_type_name = self.alter_name(signal_type)
+                self.setDirs()
+                os.system( f'. builddag.sh {self.OUTPUTDIR} {self.LOGDIR} {self.ERRORDIR} {self.EXEDIR} {self.args.type}')
+                counter = 0  # Initialize directory counter
+                for dir_path in dir_paths:
+                    SUB_DIR = os.path.basename(dir_path)
+                    logger.debug(f'Directory path: {dir_path}')
+                    logger.debug(f'Setting sub-directory: {SUB_DIR}')  
+                    self.makeSubDirs(SUB_DIR)
+                    if self.args.type == 'online':
+                        for indir, dirnames, filenames in os.walk(dir_path):
+                            logger.debug(f'Processing directory for online preprocessing: {indir}')
+                            self.writeDAG(counter, filenames, job_suffix, dag_file, indir, SUB_DIR)
+                    else:
+                        filenames = os.listdir(dir_path)
+                        if not filenames:
+                            logger.debug(f'Skipping directory: {dir_path}')
+                            continue  # Skip empty directories
+                        logger.debug(f'Processing directory for offline preprocessing: {dir_path}')
+                        logger.debug(f'Files in directory: {filenames}')
+                        self.writeDAG(counter, filenames, job_suffix, dag_file, dir_path, SUB_DIR)
+                        
+        os.system(f". SubmitDag.sh {self.EXEDIR}")
+
+    # Refactor process_offline_files to use the generalized function
+    def process_offline_files(self):
+        self.process_files(self.SIGNAL_TYPES, 'offline_preprocess')
+
+    # Assuming process_online_files is similar, refactor it as well
     def process_online_files(self):
+        self.process_files(self.SIGNAL_TYPES, 'online_preprocess')
+
+    def process_online_files_depreciated(self):
         """
         Processes the files.
         """
@@ -134,35 +198,6 @@ class CondorFilter():
                         dir_counter += 1  # Increment directory counter
                         if self.args.fast and dir_counter >= 5:  # Check again in case the limit is reached within the inner loop
                             break
-        os.system(f". SubmitDag.sh {self.EXEDIR}")
-
-    def process_offline_files(self):
-        """
-        Processes the files.
-        """
-        logger.info("Processing files...")
-        logger.info(f'SIGNAL_TYPES SELECTED: {self.SIGNAL_TYPES}\n')
-        EXEDIR = self.setExeDir()
-        with open(f"{self.EXEDIR}/myJobs.dag", "w") as dag_file:
-            for signal_type in self.SIGNAL_TYPES:
-                logger.info(f'Processing signal type: {signal_type}')
-                signal_type = self.alter_name(signal_type)
-                os.system( f'. builddag.sh {self.args.outdir} {self.VERSION} {signal_type} {self.EXEDIR} {self.args.type}')
-                logger.debug(f'Execution directory: {self.EXEDIR}')
-                # bit hacky but the dir has bias files in it as well - need to filter them out at some point, but for now looping through the first 100 will only select 6 non-bias files to process
-                if self.args.fast is True: indir = os.listdir(self.args.sigs_path)[:100]
-                else: indir = os.listdir(self.args.sigs_path)
-                logger.debug(f'Processing files in directory: {self.args.sigs_path}')
-                for infile in indir:
-                    if infile.endswith('.i3.gz') and 'bias' not in infile:
-                        logger.debug(f'Processing file: {infile}')
-                        input_file = os.path.join(self.args.sigs_path, infile)
-                        BASENAME = "LLPSimulation" + infile.split("LLPSimulation")[1].split(".i3.gz")[0]
-                        JOBNAME = f'{self.VERSION}_{signal_type}_offline_preprocess_{datetime.datetime.now().strftime("%m%d%Y")}'
-                        JOBID = f"{JOBNAME}_{BASENAME}_{self.args.version}"
-                        dag_file.write(f"JOB {JOBID} {self.EXEDIR}/DAGOneJob.submit\n")
-                        dag_file.write(f'VARS {JOBID} JOBNAME="{JOBNAME}" GCD_FILE="{self.GCD_PATH}" INFILE="{input_file}" BASENAME="{BASENAME}"\n')
-
         os.system(f". SubmitDag.sh {self.EXEDIR}")
         
 

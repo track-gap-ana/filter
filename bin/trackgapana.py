@@ -63,8 +63,14 @@ class Make(object):
 
     # Corrected plotStack method using lambda for passing arguments
     def plotStack(self, args):
-        plot = Plot.Stack(filepath=args.outdir, config_var=args.config_var, config_samples=args.config_samples)
-        self.emptyCheck(args.outdir, lambda: plot.processHist(args=args))
+        plot = Plot.Stack(outdir=args.outdir, config_var=args.config_var, config_samples=args.config_samples)
+        # self.emptyCheck(args.outdir, lambda: plot.onePlot(args=args))
+        plot.onePlot(args)
+
+    def plotStackSubplot(self, args):
+        plot = Plot.Stack(outdir=args.outdir, config_var=args.config_var, config_samples=args.config_samples)
+        # self.emptyCheck(args.outdir, lambda: plot.subPlot(args=args))
+        plot.subPlot(args)
 
     # calling run functions
     def run(self,args):
@@ -91,6 +97,7 @@ class Make(object):
         # make stacks with new variables
         if args.type == "stack":
             if args.plot: self.plotStack(args)
+            if args.subplot: self.plotStackSubplot(args)
 
         # make stack with new variables plotting
         if args.type == "yield":
@@ -126,6 +133,7 @@ if __name__ == "__main__":
     parser.add_argument('--fast', required=False, action="store_true", help="Run with flag for fast testing")
     parser.add_argument('--withbkg', "-B", action="store_true")
     parser.add_argument('--plot', '-P', action="store_true")
+    parser.add_argument('--subplot', '-S', action="store_true")
     parser.add_argument('--var', '-V', action="store_true")
     parser.add_argument('--redo', '-R', action="store_true", help='Redo variable calculation and h5 file creation')
     parser.add_argument('--debug', '-d', action="store_true", help="Run with flag for debug logging")
