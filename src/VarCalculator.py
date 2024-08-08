@@ -95,7 +95,7 @@ class VarCalculator(object):
         frame_count = [0]
         # Add modules to the tray
         tray.Add("I3Reader", filenamelist= filenamelist)
-        # Print out the total number of frames that passed the filter
+        # Apply filter if specified
         if filter is not None: 
             logger.warning(f"Filtering on:-------------\n {filter}")
             tray.Add(

@@ -1,8 +1,8 @@
 vars:
     "Edeposited"            : [100, 0, 1000]
-    "totalInitialE"         : [100, 0, 20000]
-    "totalMCPulseCharge"    : [100, 0, 4000]
-    "totalDOMHits"          : [100, 0, 2500]
+    # "totalInitialE"         : [100, 0, 20000]
+    # "totalMCPulseCharge"    : [100, 0, 4000]
+    # "totalDOMHits"          : [100, 0, 2500]
   
 # -- hist configurations
 attri:
@@ -11,5 +11,4 @@ attri:
                               "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
 filter: 
     "OfflineMu_24"
-    # "None"
 

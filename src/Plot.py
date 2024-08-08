@@ -76,7 +76,6 @@ class Stack():
         plt.close(fig)
         
     def onePlot(self, args):
-
         for var in self.vars:
             logger.info("Plotting variable: %s", var)
             self.iniPad(var)
@@ -84,32 +83,19 @@ class Stack():
             for hdf5_file_path, color in zip(self.hdf5Reader(self.outdir), self.colors):
                 logger.debug(f"Variable: {var}")
                 bins, min_val, max_val = self.config.readConfigs(var, args)
-                
-                # Ensure bins, min_val, and max_val are of type float
                 bins = int(bins)
                 min_val = int(min_val)
                 max_val = int(max_val)
 
-                # Open the HDF5 file
-                with h5py.File(hdf5_file_path, 'r') as hdf5_file:
-                    # Directly access the dataset and ensure it's a float array
-                    logger.debug(f"Reading file: {hdf5_file}")
-                    logger.debug(f"Available keys: {hdf5_file.keys()}")
-                    data = np.asarray(hdf5_file[var]['value'][:], dtype=float)
-                    if "CORSIKA" in hdf5_file_path:
-                        corsikaweight = CorsikaWeight()
-                        weights = corsikaweight.makeWeights(hdf5_file_path)                        
-                        logger.info(f"Currently plotting CORSIKA")
-                        plt.hist(data, bins=bins, range=(min_val, max_val), color=color, alpha=0.3, label="CORSIKA", weights=weights)
-                    else: 
-                        legend = ' '.join((hdf5_file_path.split('/')[-1]).replace('.', ' ').replace('_', ' ').replace('-', ' ').split()[:-4])
-                        logger.info(f"Currently plotting sample: {legend}")   
-                        plt.hist(data, bins=bins, range=(min_val, max_val), color=color, alpha=0.5, label=legend)   
+                fig, ax = self.createSubplots([var])
 
-            plt.legend(fontsize=6)
-            plt.show()
-            self.plotspath = self.config.makeDirs(os.path.join(self.outdir, "plots"))
-            plt.savefig(self.plotspath+"/"+var+".png")
+                self.plotHistogram(hdf5_file_path, var, ax, bins, min_val, max_val, color, alpha=0.3)
+
+                ax.legend(fontsize=6)
+                ax.set_title(var)
+
+                plt.tight_layout()
+                self.saveFigure(fig, var)
 
     def subPlot(self, args):
         logger.info("Plotting subplot variables: %s", self.vars)
