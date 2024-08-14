@@ -42,7 +42,9 @@ class Stack():
             legend += " No Filter"
         return legend
     
-    def identifyPairs(self, hdf5_files):
+    def identifyH5Pairs(self):
+        hdf5_files = [f for f in os.listdir(self.outdir) if f.endswith('.hdf5')]
+        logger.info("Found HDF5 files: %s", hdf5_files)
         pairs = []
         for file in hdf5_files:
             if 'noFilter' in file:
@@ -59,22 +61,30 @@ class Stack():
     def plotHistogram(self, file_path, var, ax, bins, min_val, max_val, color, alpha):
         with h5py.File(file_path, 'r') as hdf5_file:
             data = np.asarray(hdf5_file[var]['value'][:], dtype=float)
-            logger.debug(f"Reading file: {file_path}\n Histogram related: {data}")
+            frame_count = len(hdf5_file[var]['value'])
+            # logger.debug(f"Reading file: {file_path}\n Histogram related: {data}")
             if "CORSIKA" in file_path:
                 corsikaweight = CorsikaWeight()
                 weights = corsikaweight.makeWeights(file_path)
                 ax.hist(data, histtype='step', bins=bins, range=(min_val, max_val), color=color, alpha=alpha, label="CORSIKA", weights=weights)
             else:
-                legend = self.getLegend(file_path)
+                legend = self.getLegend(file_path)+f" Saved events: {frame_count}"
                 ax.hist(data, histtype='step', bins=bins, range=(min_val, max_val), color=color, alpha=alpha, label=legend)
 
+    def countFrames(self, var):
+        pairs = self.identifyH5Pairs()
+        for file_pair in pairs:
+            for file in file_pair:
+                with h5py.File(file, 'r') as hdf5_file:
+                    frame_count = len(hdf5_file[var]['value'])
+                    logger.debug(f"Processing file: {file}, Frame count: {frame_count}")
+    
     def saveFigure(self, fig, var):
-        self.plotspath = self.config.makeDirs(os.path.join(self.outdir, "plots"))
         figpath = os.path.join(self.plotspath, f"{var}.png")
         plt.savefig(figpath)
         logger.debug(f"Saved figure: {figpath}")
         plt.close(fig)
-        
+
     def onePlot(self, args):
 
         for var in self.vars:
@@ -114,13 +124,12 @@ class Stack():
     def subPlot(self, args):
         logger.info("Plotting subplot variables: %s", self.vars)
         # Get list of HDF5 files in the output directory
-        hdf5_files = [f for f in os.listdir(self.outdir) if f.endswith('.hdf5')]
-        logger.info("Found HDF5 files: %s", hdf5_files)
+        
 
         # Identify pairs of files
-        pairs = self.identifyPairs(hdf5_files)
+        pairs = self.identifyH5Pairs()
         logger.debug("Pairs: %s", pairs)
-
+        
         for var in self.vars:
             # Create subplots for each var
             fig, axes = plt.subplots(len(pairs), 1, figsize=(10, 5 * len(pairs)))
@@ -143,11 +152,15 @@ class Stack():
 
                 ax.legend(fontsize=6)
                 ax.set_title(f'{var} - Pair {i+1}')
+                ax.set_yscale('log')
 
             plt.tight_layout()
+            self.plotspath = self.config.makeDirs(os.path.join(self.outdir, "plots"))
+            logger.info(f"Location of plots: {self.plotspath}")
+
             self.saveFigure(fig, var)
-
-
+            
+        logger.debug(self.countFrames(self.vars[0]))
 
 
 if __name__ == "__main__":

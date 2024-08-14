@@ -59,7 +59,7 @@ class Make(object):
     # Corrected makeStackH5 method using lambda for passing arguments
     def makeStackH5(self, args):
         stack = VarCalculator.VarCalculator(args)
-        self.emptyCheck(args.outdir, lambda: stack.loopTray(args))
+        self.emptyCheck(args.outdir, lambda: stack.localTrayLoop(args))
 
     # Corrected plotStack method using lambda for passing arguments
     def plotStack(self, args):

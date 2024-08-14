@@ -34,24 +34,40 @@ class VarCalculator(object):
 
 
     def fileStructure(self, args):
-        for sig in os.listdir(args.sigs_path):
-            sig_path = args.sigs_path+sig
-            if os.path.isdir(sig_path) and os.listdir(sig_path) and "out" not in sig:
-                logging.info(f"\n--------------On sample: \n{sig}")
-                if args.dag is True:
-                    filenamelist= list(glob.glob(sig_path+"/*i3*"))
-                else:
-                    filenamelist= list(glob.glob(sig_path+"/*/*.i3*"))
-                outfile = self.outdir+"/"+sig+".hdf5"
-                self.runTray(args, out_file = outfile, filenamelist = filenamelist)
-            else: 
-                pass
+        if "DarkLeptonicScalar" in args.sigs_path:
+            logging.info(f"\n--------------Only one sample type given: \n{args.sigs_path}")
+            if args.dag is True:
+                filenamelist = list(glob.glob(args.sigs_path + "/*i3*"))
+            else:
+                filenamelist = list(glob.glob(args.sigs_path + "/*/*.i3*"))
+            outfile = self.outdir + "/" + os.path.basename(args.sigs_path) + ".hdf5"
+            logger.debug(f"Running on all files")
+            self.runTray(args, out_file=outfile, filenamelist=filenamelist)
+        elif args.fast is True:
+            filenamelist = [glob.glob(args.sigs_path + "/*/*.i3*")[:5]]
+            logger.warning(f"Fast option on, only running on one file: {filenamelist}")
+            outfile = self.outdir + "/" "thefirstone_test.hdf5"
+            self.runTray(args, out_file = outfile, filenamelist = filenamelist)
+        else: 
+            for sig in os.listdir(args.sigs_path):
+                sig_path = args.sigs_path+sig
+                if os.path.isdir(sig_path) and os.listdir(sig_path) and "out" not in sig:
+                    logging.info(f"\n--------------On sample: \n{sig}")
+                    if args.dag is True:
+                        filenamelist= list(glob.glob(sig_path+"/*i3*"))
+                    else:
+                        filenamelist= list(glob.glob(sig_path+"/*/*.i3*"))
+                    outfile = self.outdir+"/"+sig+".hdf5" 
+                    logger.debug(f"Running on all files")
+                    self.runTray(args, out_file = outfile, filenamelist = filenamelist)
+                else: 
+                    pass
             
     def local_filterFileStructure(self, args):
         for sig in os.listdir(args.sigs_path):
             self.runTray(args, out_file = self.outdir+"/"+"test.hdf5", filenamelist = [args.sigs_path+sig])
 
-    def loopTray(self,args):
+    def localTrayLoop(self,args):
             logging.info("\n--------------Making variables")        
             # make 1 bkg tree
             if args.withbkg is True: 
@@ -70,11 +86,6 @@ class VarCalculator(object):
 
     def runTray(self, args, out_file, filenamelist, weight=False):
         # fast option
-        if args.fast is True: 
-            filenamelist = filenamelist[:1]
-            logger.debug(f"Fast option, only computing one file: {filenamelist}")
-        else: 
-            logger.debug(f"Running on all files: {filenamelist}")
 
         # Create dictionaries for stack treeogram
         with open(args.config_var, 'r') as f:
@@ -89,7 +100,8 @@ class VarCalculator(object):
             writer = hdfwriter.I3SimHDFWriter
             write_vars = vars + ["CorsikaWeightMap", "I3EventHeader", "PolyplopiaPrimary"]
         else: 
-            writer = hdfwriter.I3SimHDFWriter
+            writer = hdfwriter.I3HDFWriter
+            subeventstream = ["OfflineMu_24"]
             write_vars = vars
 
         frame_count = [0]
@@ -112,6 +124,7 @@ class VarCalculator(object):
             writer,
             keys=write_vars,
             output=out_file,
+            SubEventStreams=subeventstream,
         )
         tray.Execute()
         logger.debug(f"Total number of frames: {frame_count[0]}")

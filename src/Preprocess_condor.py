@@ -107,8 +107,9 @@ class CondorFilter():
                 BASENAME = os.path.basename(infile[:-7])
                 if self.args.type == 'online':
                     UNIQUEJOBID = indir.split("/")[-1]
-                else: # Offline
+                elif self.args.type == 'offline' or self.args.type == 'stack':
                     UNIQUEJOBID = re.search(r'(LLPSimulation.*?\.i3(?:\.gz)?)$', infile).group(1)
+                    
                 JOBNAME = f'{self.VERSION}_{self.signal_type_name}_{job_suffix}_{datetime.datetime.now().strftime("%m%d%Y")}'
                 JOBID = f"{JOBNAME}_{UNIQUEJOBID}_{self.args.version}"
                 logger.debug(f'JOBID: {JOBID}')
@@ -161,44 +162,9 @@ class CondorFilter():
     def process_online_files(self):
         self.process_files(self.SIGNAL_TYPES, 'online_preprocess')
 
-    def process_online_files_depreciated(self):
-        """
-        Processes the files.
-        """
-        logger.info("Processing files...")
-        logger.debug(f'TOP_DIR: {self.TOP_DIR}')
-        logger.info(f'SIGNAL_TYPES SELECTED: {self.SIGNAL_TYPES}\n')
-        self.setDirs(exedirOnly=True)
+    def process_variable_h5files(self):
+        self.process_files(self.SIGNAL_TYPES, 'var_calculator')
 
-        with open(f"{self.EXEDIR}/myJobs.dag", "w") as dag_file:
-            for signal_type in self.SIGNAL_TYPES:
-                logger.info(f'Processing signal type: {signal_type}')
-                dir_paths = glob.glob(f"{self.TOP_DIR}{signal_type}")
-                self.signal_type_name = self.alter_name(signal_type)
-                self.setDirs()
-                os.system( f'. builddag.sh {self.OUTPUTDIR} {self.LOGDIR} {self.ERRORDIR} {self.EXEDIR} {self.args.type}')
-                dir_counter = 0  # Initialize directory counter
-                for dir_path in dir_paths:
-                    SUB_DIR = os.path.basename(dir_path)
-                    logger.debug(f'Setting sub-directory: {SUB_DIR}')  
-                    self.makeSubDirs(SUB_DIR)
-                    
-                    for indir, dirnames, filenames in os.walk(dir_path):
-                        if self.args.fast and dir_counter >= 5:  # Check if fast mode is enabled and limit is reached
-                            break  # Exit the loop after processing 5 directories
-                        for infile in filenames:
-                            if infile.startswith('LLP') and (infile.endswith('.i3') or infile.endswith('.i3.gz')):
-                                input_file = os.path.join(indir, infile)
-                                BASENAME = os.path.basename(infile[:-7])
-                                UNIQUEJOBID = indir.split("/")[-1]
-                                JOBNAME = f'{self.VERSION}_{self.signal_type_name}_online_preprocess_{datetime.datetime.now().strftime("%m%d%Y")}'
-                                JOBID = f"{JOBNAME}_{UNIQUEJOBID}_{self.args.version}"
-                                dag_file.write(f"JOB {JOBID} {self.EXEDIR}/DAGOneJob.submit\n")
-                                dag_file.write(f'VARS {JOBID} JOBNAME="{JOBNAME}" SUBDIR="{SUB_DIR}" GCD_FILE="{self.GCD_PATH}" INFILE="{input_file}" BASENAME="{BASENAME}"\n')
-                        dir_counter += 1  # Increment directory counter
-                        if self.args.fast and dir_counter >= 5:  # Check again in case the limit is reached within the inner loop
-                            break
-        os.system(f". SubmitDag.sh {self.EXEDIR}")
         
 
 if __name__ == "__main__":

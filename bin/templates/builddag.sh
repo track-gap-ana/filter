@@ -7,6 +7,7 @@ ERRORDIR=$3
 EXEDIR=$4
 PROCESS=$5
 
+
 # environment params
 export HOME=$HOME
 export EXDIR=$EXEDIR
@@ -16,10 +17,14 @@ if [ "$PROCESS" == "online" ]; then
     export PYTHONSCRIPT=/home/vparrish/icecube/llp_ana/reco_studies/icetray/src/online_filterscripts/resources/scripts/PFRaw_to_DST.py
     export ARGUMENTS="-s"
     
-else
+elif
     export PYTHONSCRIPT=/home/vparrish/icecube/llp_ana/reco_studies/icetray/src/offline_filterscripts/resources/scripts/filter_SDST.py
     export ARGUMENTS=""
+else
+    export PYTHONSCRIPT=/home/vparrish/icecube/llp_ana/reco_studies/microNN_filter/bin/trackgapana.py
+    export ARGUMENTS=$6
 fi
+
 
 # script used for condorVES
 echo "CONDOR SCRIPT: $CONDORSCRIPT"
