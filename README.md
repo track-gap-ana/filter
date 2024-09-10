@@ -24,7 +24,7 @@ Non-standard module depedencies:
 #### Example usage:
 Online: 
 
-`python bin/trackgapana.py --type online --outdir /data/user/vparrish/llp_ana/online --fast --version v1`
+`python bin/trackgapana.py --type online --outdir /data/user/vparrish/llp_ana/online --version v1 --debug --dag --redo`
 
 ## 0b. Offline: Prime simulation with Base Processing
 Base process for filter studies done with offline processing. This can be done locally or on the condor submission server `submit-1` using DAGMan submission formats.

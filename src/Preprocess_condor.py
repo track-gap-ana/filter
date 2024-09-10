@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import yaml
 import logging
@@ -7,8 +8,6 @@ import socket
 import re
 
 import ConfigHelper
-
-#!/usr/bin/env python
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ class CondorFilter():
     Attributes:
         args: An object containing command line arguments.
         TOP_DIR: The top directory path.
-        SIGNAL_TYPES: A list of signal types.
+        SIGNAL_TYPES: A list of signal typrCoes.
         GCD_PATH: The path to the GCD file.
         VERSION: The version of the samples.
 
@@ -161,10 +160,6 @@ class CondorFilter():
     # Assuming process_online_files is similar, refactor it as well
     def process_online_files(self):
         self.process_files(self.SIGNAL_TYPES, 'online_preprocess')
-
-    def process_variable_h5files(self):
-        self.process_files(self.SIGNAL_TYPES, 'var_calculator')
-
         
 
 if __name__ == "__main__":

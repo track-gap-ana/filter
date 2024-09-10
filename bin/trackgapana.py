@@ -76,6 +76,7 @@ class Make(object):
     def run(self,args):
         # set logging configs
         if args.debug is True:
+            print('logger level is at debug')
             logging.basicConfig(level=logging.DEBUG, format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
         else:
             logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')

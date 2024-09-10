@@ -4,7 +4,6 @@ import yaml
 import logging
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)  # Set the logging level to DEBUG
 
 class OfflineFilter:
     """

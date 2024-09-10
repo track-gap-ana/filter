@@ -19,6 +19,7 @@ class VarCalculatorHelper:
             # Accumulate
             edep +=  (e0-e1)
         return edep
+
     
     def ComputeTotalMCPulseCharge(self):
         totalCharge = 0
@@ -32,6 +33,29 @@ class VarCalculatorHelper:
             totalHits += 1
         return totalHits
     
+    def ComputeTimeOfFirstPulse(self):
+        firstPulseTime = float('inf')
+        for key, item in self.frame["I3MCPulseSeriesMap"]:
+            for pulse in item:
+                if pulse.time < firstPulseTime:
+                    firstPulseTime = pulse.time
+        return 
+    
+    def ComputeChargeWeightedStdDev(self):
+        totalCharge = 0
+        totalWeightedCharge = 0
+        for key, item in self.frame["I3MCPulseSeriesMap"]:
+            for pulse in item:
+                totalCharge += pulse.charge
+                totalWeightedCharge += pulse.charge * pulse.time
+        meanTime = totalWeightedCharge / totalCharge
+        chargedWeightStdDev = 0
+        for key, item in self.frame["I3MCPulseSeriesMap"]:
+            for pulse in item:
+                chargedWeightStdDev += (pulse.charge * (pulse.time - meanTime) ** 2)
+        chargedWeightStdDev = (chargedWeightStdDev / totalCharge) ** 0.5
+        return chargedWeightStdDev
+    
     def ComputeTotalEnergyAtBoundary(self):
         totalE = 0
         for p in self.frame["I3MCTree_preMuonProp"].children(self.frame["I3MCTree_preMuonProp"].get_head()):
@@ -43,5 +67,7 @@ class VarCalculatorHelper:
         if var == 'totalMCPulseCharge': return self.ComputeTotalMCPulseCharge()
         if var == 'totalDOMHits': return self.ComputeTotalDOMHits()
         if var == 'totalInitialE': return self.ComputeTotalEnergyAtBoundary()
+        if var == 'timeOfFirstPulse': return self.ComputeTimeOfFirstPulse()
+        if var == 'chargeWeightedStdDev': return self.ComputeChargeWeightedStdDev()
         return 0
  

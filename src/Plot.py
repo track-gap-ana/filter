@@ -5,6 +5,8 @@ import os
 import logging
 from Weight import CorsikaWeight
 import h5py
+import subprocess
+import re
 # --- 
 import ConfigHelper
 
@@ -100,26 +102,12 @@ class Stack():
                 min_val = int(min_val)
                 max_val = int(max_val)
 
-                # Open the HDF5 file
-                with h5py.File(hdf5_file_path, 'r') as hdf5_file:
-                    # Directly access the dataset and ensure it's a float array
-                    logger.debug(f"Reading file: {hdf5_file}")
-                    logger.debug(f"Available keys: {hdf5_file.keys()}")
-                    data = np.asarray(hdf5_file[var]['value'][:], dtype=float)
-                    if "CORSIKA" in hdf5_file_path:
-                        corsikaweight = CorsikaWeight()
-                        weights = corsikaweight.makeWeights(hdf5_file_path)                        
-                        logger.info(f"Currently plotting CORSIKA")
-                        plt.hist(data, bins=bins, range=(min_val, max_val), color=color, alpha=0.3, label="CORSIKA", weights=weights)
-                    else: 
-                        legend = ' '.join((hdf5_file_path.split('/')[-1]).replace('.', ' ').replace('_', ' ').replace('-', ' ').split()[:-4])
-                        logger.info(f"Currently plotting sample: {legend}")   
-                        plt.hist(data, bins=bins, range=(min_val, max_val), color=color, alpha=0.5, label=legend)   
+                self.plotHistogram(hdf5_file_path, var, plt.gca(), bins, min_val, max_val, color, alpha=0.3 if "CORSIKA" in hdf5_file_path else 0.5)
 
             plt.legend(fontsize=6)
             plt.show()
-            self.plotspath = self.config.makeDirs(os.path.join(self.outdir, "plots"))
-            plt.savefig(self.plotspath+"/"+var+".png")
+            self.saveFigure(plt.gcf(), var)
+
 
     def subPlot(self, args):
         logger.info("Plotting subplot variables: %s", self.vars)
@@ -156,12 +144,67 @@ class Stack():
 
             plt.tight_layout()
             self.plotspath = self.config.makeDirs(os.path.join(self.outdir, "plots"))
-            logger.info(f"Location of plots: {self.plotspath}")
 
             self.saveFigure(fig, var)
-            
+
+        self.plotPairs(args)
+
         logger.debug(self.countFrames(self.vars[0]))
 
+    def plotPairs(self,args):
+
+        #Identify pairs of files -- returns list of pairs
+        pairs = self.identifyH5Pairs()
+        figure_paths = []
+        logger.debug("Pairs: %s", pairs)
+        for var in self.vars:
+            logger.info("Plotting variable: %s", var)
+            self.iniPad(var)
+            for i, (no_filter_file, filter_file) in enumerate(pairs):
+                logger.debug(f"Variable: {var}")
+                bins, min_val, max_val = self.config.readConfigs(var, args)
+                
+                # Ensure bins, min_val, and max_val are of type float
+                bins = int(bins)
+                min_val = int(min_val)
+                max_val = int(max_val)
+
+                self.plotHistogram(no_filter_file, var, plt.gca(), bins, min_val, max_val, color='blue', alpha=0.5)
+                self.plotHistogram(filter_file, var, plt.gca(), bins, min_val, max_val, color='red', alpha=0.5)
+
+                plt.yscale('log')
+                plt.legend(fontsize=6)
+                plt.show()
+                fig_path = var+filter_file.split('/')[-1].replace('.hdf5','.png')
+                figure_paths.append(os.path.abspath(fig_path))
+                self.saveFigure(plt.gcf(), fig_path)
+
+        self.generate_slide_deck(figure_paths)
+    
+    def generate_slide_deck(self, figure_paths):
+        # Generate the LaTeX slide deck
+        slide_deck_path = os.path.join(self.plotspath, "slide_deck.tex")
+        with open(slide_deck_path, 'w') as slide_deck:
+            slide_deck.write("\\documentclass{beamer}\n")
+            slide_deck.write("\\usepackage{graphicx}\n")
+            slide_deck.write("\\begin{document}\n")
+
+            for fig_path in figure_paths:
+                fig_path = self.escape_latex_special_chars(fig_path)
+                slide_deck.write(f"% Including figure: {fig_path}\n")
+                slide_deck.write("\\begin{frame}\n")
+                slide_deck.write(f"\\includegraphics[width=\\textwidth]{{{fig_path}}}\n")
+                slide_deck.write("\\end{frame}\n")
+
+            slide_deck.write("\\end{document}\n")
+
+        # Compile the slide deck using pdflatex
+        result = subprocess.run(["pdflatex", slide_deck_path], capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            logger.error(f"pdflatex compilation failed: {result.stderr}")
+        else:
+            logger.debug(f"Slide deck created: {slide_deck_path}")
 
 if __name__ == "__main__":
     stack = Stack()

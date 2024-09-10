@@ -33,7 +33,26 @@ class VarCalculator(object):
         self.outdir = self.config.makeDirs(args.outdir)
 
 
+    def localTrayLoop(self,args):
+            logging.info("\n--------------Making variables")        
+            # make 1 bkg tree
+            if args.withbkg is True: 
+                logging.info("\n--------------Background booking is turned of and running")
+                filenamelist= list(glob.glob(args.bkg_path+"/*zst"))
+                # logginrunTrayg.debug(filenamelist)
+                outfile = self.outdir+"/CORSIKA.hdf5"
+                self.runTray(args, out_file = outfile, filenamelist = filenamelist, weight=True)
+            else:
+                # make all other trees
+                if args.sigs_path is not None:
+                    self.config_var = args.config_var
+                    logger.debug(f"Config file: {self.config_var}")
+                    logger.debug(f'Running on: {args.sigs_path}')
+                    self.fileStructure(args)
+
+
     def fileStructure(self, args):
+        # In the case of signal samples
         if "DarkLeptonicScalar" in args.sigs_path:
             logging.info(f"\n--------------Only one sample type given: \n{args.sigs_path}")
             if args.dag is True:
@@ -42,12 +61,14 @@ class VarCalculator(object):
                 filenamelist = list(glob.glob(args.sigs_path + "/*/*.i3*"))
             outfile = self.outdir + "/" + os.path.basename(args.sigs_path) + ".hdf5"
             logger.debug(f"Running on all files")
-            self.runTray(args, out_file=outfile, filenamelist=filenamelist)
+            self.iterateFilters(self.runTray(args, out_file=outfile, filenamelist=filenamelist))
         elif args.fast is True:
             filenamelist = [glob.glob(args.sigs_path + "/*/*.i3*")[:5]]
             logger.warning(f"Fast option on, only running on one file: {filenamelist}")
             outfile = self.outdir + "/" "thefirstone_test.hdf5"
-            self.runTray(args, out_file = outfile, filenamelist = filenamelist)
+            self.iterateFilters(self.runTray(args, out_file=outfile, filenamelist=filenamelist))
+
+        # In the case of background samples
         else: 
             for sig in os.listdir(args.sigs_path):
                 sig_path = args.sigs_path+sig
@@ -62,27 +83,11 @@ class VarCalculator(object):
                     self.runTray(args, out_file = outfile, filenamelist = filenamelist)
                 else: 
                     pass
-            
-    def local_filterFileStructure(self, args):
-        for sig in os.listdir(args.sigs_path):
-            self.runTray(args, out_file = self.outdir+"/"+"test.hdf5", filenamelist = [args.sigs_path+sig])
 
-    def localTrayLoop(self,args):
-            logging.info("\n--------------Making variables")        
-            # make 1 bkg tree
-            if args.withbkg is True: 
-                logging.info("\n--------------Background booking is turned of and running")
-                filenamelist= list(glob.glob(args.bkg_path+"/*zst"))
-                # logging.debug(filenamelist)
-                outfile = self.outdir+"/CORSIKA.hdf5"
-                self.runTray(args, out_file = outfile, filenamelist = filenamelist, weight=True)
-            else:
-                # make all other trees
-                if args.sigs_path is not None:
-                    self.config_var = args.config_var
-                    logger.debug(f"Config file: {self.config_var}")
-                    logger.debug(f'Running on: {args.sigs_path}')
-                    self.fileStructure(args)
+    def iterateFilters(self, func):
+        for filter in self.filter:
+            self.filter = filter
+            func()
 
     def runTray(self, args, out_file, filenamelist, weight=False):
         # fast option
@@ -91,7 +96,6 @@ class VarCalculator(object):
         with open(args.config_var, 'r') as f:
             config = yaml.full_load(f)
         vars = list(config["vars"].keys())
-        filter = config["filter"]
         logger.info(f"\n--------------Variables for calculation and booking: \n{vars}")
         tray = I3Tray()
         
@@ -101,22 +105,22 @@ class VarCalculator(object):
             write_vars = vars + ["CorsikaWeightMap", "I3EventHeader", "PolyplopiaPrimary"]
         else: 
             writer = hdfwriter.I3HDFWriter
-            subeventstream = ["OfflineMu_24"]
+            subeventstream = [self.filter]
             write_vars = vars
 
         frame_count = [0]
         # Add modules to the tray
         tray.Add("I3Reader", filenamelist= filenamelist)
         # Print out the total number of frames that passed the filter
-        if filter is not None: 
-            logger.warning(f"Filtering on:-------------\n {filter}")
+        if self.filter is not None: 
+            logger.warning(f"Filtering on:-------------\n {self.filter}")
             tray.Add(
-                lambda frame: bool(frame["OfflineFilterMask"][filter])
+                lambda frame: bool(frame["OfflineFilterMask"][self.filter])
                 if "OfflineFilterMask" in frame
                 else False
             )
         else: 
-            logger.warning(f"-------------\n No filter applied")
+            logger.warning(f"-------------\n No filter applied")            
             out_file = out_file.replace(".hdf5", "_noFilter.hdf5")
         tray.AddModule(lambda frame: frame_count.append(frame_count.pop() + 1), 'counter')
         tray.Add(Stack, GCDFile = args.gcd_path, vars=vars)

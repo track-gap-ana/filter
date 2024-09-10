@@ -5,3 +5,4 @@ outdir/*
 build
 src/envs
 condor_exe_dirs/
+*ipynb*
