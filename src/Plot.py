@@ -88,7 +88,6 @@ class Stack():
         plt.close(fig)
 
     def onePlot(self, args):
-
         for var in self.vars:
             logger.info("Plotting variable: %s", var)
             self.iniPad(var)
@@ -96,8 +95,6 @@ class Stack():
             for hdf5_file_path, color in zip(self.hdf5Reader(self.outdir), self.colors):
                 logger.debug(f"Variable: {var}")
                 bins, min_val, max_val = self.config.readConfigs(var, args)
-                
-                # Ensure bins, min_val, and max_val are of type float
                 bins = int(bins)
                 min_val = int(min_val)
                 max_val = int(max_val)
