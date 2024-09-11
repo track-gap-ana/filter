@@ -2,7 +2,6 @@
 import os
 import argparse
 import logging
-import yaml
 
 import VarCalculator
 import Plot
@@ -56,8 +55,8 @@ class Make(object):
             # Use a lambda if the function needs to be called with arguments
             self.emptyCheck(args.outdir, lambda: offline.run())
 
-    # Corrected makeStackH5 method using lambda for passing arguments
-    def makeStackH5(self, args):
+    # Corrected makeStackFile method using lambda for passing arguments
+    def makeStackFile(self, args):
         stack = VarCalculator.VarCalculator(args)
         self.emptyCheck(args.outdir, lambda: stack.localTrayLoop(args))
 
@@ -83,9 +82,6 @@ class Make(object):
 
         # Set special logging colors and rules
         Logging.specialRules()
-
-        # make h5 files
-        if args.var: self.makeStackH5(args)
         
         # make online files
         if args.type == "online":
@@ -97,6 +93,7 @@ class Make(object):
 
         # make stacks with new variables
         if args.type == "stack":
+            if args.var: self.makeStackFile(args)
             if args.plot: self.plotStack(args)
             if args.subplot: self.plotStackSubplot(args)
 
@@ -136,6 +133,7 @@ if __name__ == "__main__":
     parser.add_argument('--plot', '-P', action="store_true")
     parser.add_argument('--subplot', '-S', action="store_true")
     parser.add_argument('--var', '-V', action="store_true")
+    parser.add_argument('--i3', '-I', action="store_true", help="produce i3 files instead of hdf5")
     parser.add_argument('--redo', '-R', action="store_true", help='Redo variable calculation and h5 file creation')
     parser.add_argument('--debug', '-d', action="store_true", help="Run with flag for debug logging")
 

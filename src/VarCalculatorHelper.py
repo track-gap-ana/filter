@@ -39,7 +39,7 @@ class VarCalculatorHelper:
             for pulse in item:
                 if pulse.time < firstPulseTime:
                     firstPulseTime = pulse.time
-        return 
+        return firstPulseTime
     
     def ComputeChargeWeightedStdDev(self):
         totalCharge = 0
@@ -67,7 +67,7 @@ class VarCalculatorHelper:
         if var == 'totalMCPulseCharge': return self.ComputeTotalMCPulseCharge()
         if var == 'totalDOMHits': return self.ComputeTotalDOMHits()
         if var == 'totalInitialE': return self.ComputeTotalEnergyAtBoundary()
-        if var == 'timeOfFirstPulse': return self.ComputeTimeOfFirstPulse()
+        if var == 'firstPulseTime': return self.ComputeTimeOfFirstPulse()
         if var == 'chargeWeightedStdDev': return self.ComputeChargeWeightedStdDev()
         return 0
  
