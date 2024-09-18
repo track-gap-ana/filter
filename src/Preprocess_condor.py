@@ -88,9 +88,11 @@ class CondorFilter():
             self.OUTPUTDIR=f"{self.args.outdir}/output/{self.VERSION}/{CURRENTDATE}/{self.signal_type_name}/"
             self.LOGDIR=f"{self.args.outdir}/output/{self.VERSION}/{CURRENTDATE}/{self.signal_type_name}/out/"
             self.ERRORDIR=f"{self.args.outdir}/error/{self.VERSION}/{CURRENTDATE}/{self.signal_type_name}/" 
+            self.PROCESS="clean" if self.args.clean else self.args.type
             logger.info(f'TOP OUTPUTDIR: {self.OUTPUTDIR}')
             logger.info(f'TOP LOGDIR: {self.LOGDIR}')
             logger.info(f'TOP ERRORDIR: {self.ERRORDIR}')
+            logger.info(f'TOP PROCESS: {self.PROCESS}')
 
     def makeSubDirs(self, SUB_DIR):
         
@@ -124,6 +126,7 @@ class CondorFilter():
         """
         logger.info("Processing files...")
         logger.info(f'SIGNAL_TYPES SELECTED: {signal_types}\n')
+        logger.info(f'JOB_SUFFIX SELECTED: {job_suffix}\n')
         self.setDirs(exedirOnly=True)
         with open(f"{self.EXEDIR}/myJobs.dag", "w") as dag_file:
             for signal_type in signal_types:
@@ -131,36 +134,40 @@ class CondorFilter():
                 dir_paths = glob.glob(f"{self.TOP_DIR}{signal_type}")
                 self.signal_type_name = self.alter_name(signal_type)
                 self.setDirs()
-                os.system( f'. builddag.sh {self.OUTPUTDIR} {self.LOGDIR} {self.ERRORDIR} {self.EXEDIR} {self.args.type}')
+                os.system( f'. builddag.sh {self.OUTPUTDIR} {self.LOGDIR} {self.ERRORDIR} {self.EXEDIR} {self.PROCESS}')
                 counter = 0  # Initialize directory counter
                 for dir_path in dir_paths:
                     SUB_DIR = os.path.basename(dir_path)
                     logger.debug(f'Directory path: {dir_path}')
                     logger.debug(f'Setting sub-directory: {SUB_DIR}')  
                     self.makeSubDirs(SUB_DIR)
+                    # Write DAG file for online preprocessing submission
                     if self.args.type == 'online':
                         for indir, dirnames, filenames in os.walk(dir_path):
                             logger.debug(f'Processing directory for online preprocessing: {indir}')
                             self.writeDAG(counter, filenames, job_suffix, dag_file, indir, SUB_DIR)
+                    # Write DAG file for offline OR read_clean preprocessing submission
                     else:
                         filenames = os.listdir(dir_path)
                         if not filenames:
-                            logger.debug(f'Skipping directory: {dir_path}')
+                            logger.warning(f'Directory empty, skipping: {dir_path}')
                             continue  # Skip empty directories
-                        logger.debug(f'Processing directory for offline preprocessing: {dir_path}')
+                        logger.debug(f'Processing directory for {job_suffix}: {dir_path}')
                         logger.debug(f'Files in directory: {filenames}')
                         self.writeDAG(counter, filenames, job_suffix, dag_file, dir_path, SUB_DIR)
                         
         os.system(f". SubmitDag.sh {self.EXEDIR}")
 
-    # Refactor process_offline_files to use the generalized function
-    def process_offline_files(self):
-        self.process_files(self.SIGNAL_TYPES, 'offline_preprocess')
-
     # Assuming process_online_files is similar, refactor it as well
     def process_online_files(self):
         self.process_files(self.SIGNAL_TYPES, 'online_preprocess')
-        
+
+    # Refactor process_offline_files to use the generalized function
+    def process_offline_files(self):
+        self.process_files(self.SIGNAL_TYPES, 'offline_preprocess')
+    
+    def recoAndClean_files(self):
+        self.process_files(self.SIGNAL_TYPES, 'recoAndClean_preprocess')
 
 if __name__ == "__main__":
     # Create an instance of the Online class
@@ -168,3 +175,4 @@ if __name__ == "__main__":
     # Call the process_files method
     dag_proc.process_online_files()
     dag_proc.process_offline_files()
+    dag_proc.recoAndClean_files()

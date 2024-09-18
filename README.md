@@ -30,6 +30,7 @@ Online:
 Base process for filter studies done with offline processing. This can be done locally or on the condor submission server `submit-1` using DAGMan submission formats.
 
 ### Usage:
+Example useage found below.
 #### Required:
 `--type`, `--outdir`, `--sigs_path`
 - sig subdirs
@@ -46,14 +47,17 @@ Non-standard module depedencies:
 `--version`
 `--dag`
 
-Offline *without* DAGMan sub:
+##### Offline *without* DAGMan sub:
 
 `python bin/trackgapana.py --type offline --outdir /data/user/vparrish/llp_ana/offline/ --sigs_path /data/user/vparrish/llp_ana/online/output/lateGemini/260624/full/ --fast --debug`
 
-Offline *with* DAGMan sub: 
+##### Offline *with* DAGMan sub: 
 
 `python bin/trackgapana.py --type offline --outdir /data/user/vparrish/llp_ana/offline --sigs_path /data/user/vparrish/llp_ana/online/output/lateGemini/260624/full/ --fast --debug --dag`
 
+##### Read SuperDST files ONLY (must be DAG submited):
+
+`python bin/trackgapana.py --type offline --clean --outdir /data/user/vparrish/llp_ana/offline_clean --sigs_path /data/user/vparrish/llp_ana/online/output/lateGemini/260624/full/ --fast --debug --dag`
 
 Notes: 
 - the `sig_path` for the offline process must be the same as the `outdir` used in the online process

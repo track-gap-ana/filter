@@ -3,8 +3,8 @@ vars:
     "totalInitialE"             : [100, 0, 20000]
     "totalMCPulseCharge"        : [100, 0, 4000]
     "totalDOMHits"              : [100, 0, 2500]
-    "firstPulseTime"            : [100, 0, 1000]
-    "chargeWeightedStdDev"      : [100, 0, 1000]
+    # "firstPulseTime"            : [100, 0, 1000]
+    # "chargeWeightedStdDev"      : [100, 0, 1000]
   
 # -- hist configurations
 attri:

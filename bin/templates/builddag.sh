@@ -16,10 +16,16 @@ export CONDORSCRIPT=$(pwd)/bin/templates/DAGOneJobTemplate.submit
 if [ "$PROCESS" == "online" ]; then
     export PYTHONSCRIPT=/home/vparrish/icecube/llp_ana/reco_studies/icetray/src/online_filterscripts/resources/scripts/PFRaw_to_DST.py
     export ARGUMENTS="-s"
-    
-else
+elif [ "$PROCESS" == "offline" ]; then
     export PYTHONSCRIPT=/home/vparrish/icecube/llp_ana/reco_studies/icetray/src/offline_filterscripts/resources/scripts/filter_SDST.py
     export ARGUMENTS=""
+elif [ "$PROCESS" = "clean" ]; then
+    echo $PROCESS
+    export PYTHONSCRIPT=/home/vparrish/icecube/llp_ana/reco_studies/microNN_filter/src/RecoAndClean.py
+    export ARGUMENTS=""
+else
+    echo "Invalid process: $PROCESS"
+    exit 1
 fi
 
 

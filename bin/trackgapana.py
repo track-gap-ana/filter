@@ -54,6 +54,11 @@ class Make(object):
             offline = OfflinePreprocess.OfflineFilter(outdir=args.outdir, config_samples=args.config_samples, indir=args.sigs_path, fast=fast, dag=True)
             # Use a lambda if the function needs to be called with arguments
             self.emptyCheck(args.outdir, lambda: offline.run())
+    
+    def recoAndClean(self, args):
+        recoAndClean = Preprocess_condor.CondorFilter(args)
+        outdir = recoAndClean.check_socket()
+        self.emptyCheck(args.outdir, recoAndClean.recoAndClean_files)
 
     # Corrected makeStackFile method using lambda for passing arguments
     def makeStackFile(self, args):
@@ -89,7 +94,12 @@ class Make(object):
         
         # make offline files from online files
         if args.type == "offline":
-            self.processOffline(args)
+            # only read clean files
+            if args.clean:
+                self.recoAndClean(args)
+            # perform entire offline processing
+            else:
+                self.processOffline(args)
 
         # make stacks with new variables
         if args.type == "stack":
@@ -112,31 +122,40 @@ if __name__ == "__main__":
     default_sig_top = config.loadSig()
     default_bkg_top = config.loadBkg()
     default_gcd = config.loadGCD()
-
-    # what do you want to do? 
-    parser.add_argument('--type', '-t', choices=['online', 'offline', 'stack', 'yield'], required=True)
     
+    # General drivers
     parser.add_argument("--sigs_path", "-sp", default=default_sig_top, required=False, help="All signal simulation")
     parser.add_argument("--bkg_path", "-bp", default=default_bkg_top)
     parser.add_argument("--gcd_path", '-g', default=default_gcd, required=False)    
     parser.add_argument('--config-var', '-cv', default = default_config_var ,help="config yaml variable file")
     parser.add_argument('--config-samples', '-cs', default = default_config_samples ,help="config yaml samples file")    
     parser.add_argument('--outdir', "-o", default="outdir")
+    parser.add_argument('--redo', '-R', action="store_true", help='Redo variable calculation and h5 file creation')
 
-    # condor / DAGMan submission and relevant path finding only arguments
+    ## what do you want to do? 
+    parser.add_argument('--type', '-t', choices=['online', 'offline', 'stack', 'yield'], required=True)
+
+    # FRAMEWORK DEVELOPMENT
+    parser.add_argument('--fast', required=False, action="store_true", help="Run with flag for fast testing")
+    parser.add_argument('--debug', '-d', action="store_true", help="Run with flag for debug logging")
+    
+    # FILTER DEVELOPMENT
+    ## sample processing 
+    parser.add_argument('--clean', '-RC', action="store_true", help="Read clean files")
+    ## condor / DAGMan submission and relevant path finding only arguments
     parser.add_argument('--dag', '-D', action="store_true", help="Submit jobs to condor")
     parser.add_argument('--version', '-v', default="v1", help="Version of the output files")
     
-    #turn on or off
-    parser.add_argument('--fast', required=False, action="store_true", help="Run with flag for fast testing")
-    parser.add_argument('--withbkg', "-B", action="store_true")
-    parser.add_argument('--plot', '-P', action="store_true")
-    parser.add_argument('--subplot', '-S', action="store_true")
+    # FILTER STUDIES 
+    ## variable calculation
     parser.add_argument('--var', '-V', action="store_true")
     parser.add_argument('--i3', '-I', action="store_true", help="produce i3 files instead of hdf5")
-    parser.add_argument('--redo', '-R', action="store_true", help='Redo variable calculation and h5 file creation')
-    parser.add_argument('--debug', '-d', action="store_true", help="Run with flag for debug logging")
 
+    ## plotting 
+    parser.add_argument('--plot', '-P', action="store_true")
+    parser.add_argument('--subplot', '-S', action="store_true")
+    parser.add_argument('--withbkg', "-B", action="store_true")
+    
 
     args = parser.parse_args()
 
