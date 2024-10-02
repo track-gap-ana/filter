@@ -31,18 +31,15 @@ class Stack():
         hdf5_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.hdf5') and any(item.replace("*","") in f for item in self.sig_types)]
         logger.debug(f"Found HDF5 files: {hdf5_files}")
         return hdf5_files
-    
-    def iniPad(self,var):
-        plt.figure()
-        plt.xlabel(var)
-        # todo : remove this hardcode
-        plt.ylabel("NEvents")
-    
-    def getLegend(self, file_path):
+        
+    def getLabels(self, file_path, titleOnly=False):
         legend = ' '.join((file_path.split('/')[-1]).replace('.', ' ').replace('_', ' ').replace('-', ' ').split()[:-4])
-        if "noFilter" in file_path:
+        title = ""  # Initialize title to an empty string
+        if "noFilter" in file_path and titleOnly == False:
             legend += " No Filter"
-        return legend
+        if "filter" in file_path and titleOnly == True:
+            title = "Pre and post new muon filter"
+        return title, legend
     
     def identifyH5Pairs(self):
         hdf5_files = [f for f in os.listdir(self.outdir) if f.endswith('.hdf5')]
@@ -70,7 +67,8 @@ class Stack():
                 weights = corsikaweight.makeWeights(file_path)
                 ax.hist(data, histtype='step', bins=bins, range=(min_val, max_val), color=color, alpha=alpha, label="CORSIKA", weights=weights)
             else:
-                legend = self.getLegend(file_path)+f" Saved events: {frame_count}"
+                title,legend = self.getLabels(file_path)
+                legend += f" Saved events: {frame_count}"
                 ax.hist(data, histtype='step', bins=bins, range=(min_val, max_val), color=color, alpha=alpha, label=legend)
 
     def countFrames(self, var):
@@ -82,7 +80,8 @@ class Stack():
                     logger.debug(f"Processing file: {file}, Frame count: {frame_count}")
     
     def saveFigure(self, fig, var):
-        figpath = os.path.join(self.plotspath, f"{var}.png")
+        self.plotspath = self.config.makeDirs(os.path.join(self.outdir, "plots"))
+        figpath = os.path.join(self.plotspath, f"{var}.pdf")
         plt.savefig(figpath)
         logger.debug(f"Saved figure: {figpath}")
         plt.close(fig)
@@ -90,8 +89,7 @@ class Stack():
     def onePlot(self, args):
         for var in self.vars:
             logger.info("Plotting variable: %s", var)
-            self.iniPad(var)
-            
+            plt.figure()
             for hdf5_file_path, color in zip(self.hdf5Reader(self.outdir), self.colors):
                 logger.debug(f"Variable: {var}")
                 bins, min_val, max_val = self.config.readConfigs(var, args)
@@ -134,13 +132,16 @@ class Stack():
 
                 self.plotHistogram(no_filter_file, var, ax, bins, min_val, max_val, color='blue', alpha=0.5)
                 self.plotHistogram(filter_file, var, ax, bins, min_val, max_val, color='red', alpha=0.5)
+                
+                title, _ = self.getLabels(filter_file, titleOnly=True)
 
-                ax.legend(fontsize=6)
-                ax.set_title(f'{var} - Pair {i+1}')
                 ax.set_yscale('log')
-
+                ax.legend(fontsize=6)
+                ax.set_xlabel(var)
+                ax.set_ylabel("NEvents")
+                ax.set_title(f'{title} - Pair {i+1}')
+                
             plt.tight_layout()
-            self.plotspath = self.config.makeDirs(os.path.join(self.outdir, "plots"))
 
             self.saveFigure(fig, var)
 
@@ -156,7 +157,7 @@ class Stack():
         logger.debug("Pairs: %s", pairs)
         for var in self.vars:
             logger.info("Plotting variable: %s", var)
-            self.iniPad(var)
+            plt.figure()
             for i, (no_filter_file, filter_file) in enumerate(pairs):
                 logger.debug(f"Variable: {var}")
                 bins, min_val, max_val = self.config.readConfigs(var, args)
@@ -168,15 +169,18 @@ class Stack():
 
                 self.plotHistogram(no_filter_file, var, plt.gca(), bins, min_val, max_val, color='blue', alpha=0.5)
                 self.plotHistogram(filter_file, var, plt.gca(), bins, min_val, max_val, color='red', alpha=0.5)
-
+                title,_ = self.getLabels(no_filter_file, titleOnly=True)
                 plt.yscale('log')
                 plt.legend(fontsize=6)
+                plt.xlabel(var)
+                plt.title(title)
+                plt.ylabel("NEvents")
                 plt.show()
-                fig_path = var+filter_file.split('/')[-1].replace('.hdf5','.png')
+                fig_path = var+"_"+filter_file.split('/')[-1].replace('.hdf5','')
                 figure_paths.append(os.path.abspath(fig_path))
                 self.saveFigure(plt.gcf(), fig_path)
 
-        self.generate_slide_deck(figure_paths)
+        # self.generate_slide_deck(figure_paths)
     
     def generate_slide_deck(self, figure_paths):
         # Generate the LaTeX slide deck

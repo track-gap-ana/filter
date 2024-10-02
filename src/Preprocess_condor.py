@@ -74,7 +74,7 @@ class CondorFilter():
         if self.args.fast is True:
             print("fast mode")
             signal_type = "test"
-        if "*" in signal_type:
+        if "*" is signal_type:
             signal_type = "full"
         return signal_type.replace("*","")
     
