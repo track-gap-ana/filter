@@ -5,15 +5,21 @@ sig:
     #"*ene_1e2*"
     #"*ene_1e4*"
     # "*"
-    "*mass-110*"
+    # "*mass-110*"
     # "DarkLeptonicScalar.mass-110.eps-3e-05.nevents-500000.0_ene_200.0_15000.0_gap_50.0_240919.216129961"
     # "DarkLeptonicScalar.mass-110.eps-3e-05.nevents-500000.0_ene_200.0_15000.0_gap_50.0_240917.215984659"
+# testing sig    
+      "*gap_5*"
 
     
 bkg:
-  "/data/sim/IceCube/2020/generated/CORSIKA-in-ice/20904/0198000-0198999/detector/"
+# training bkg
+  # "/data/sim/IceCube/2023/filtered/PFFilt/CORSIKA-in-ice/22803/0000000-0000999/"
+# testing bkg
+  "/data/sim/IceCube/2023/filtered/PFFilt/CORSIKA-in-ice/22803/0001000-0001999/"
+  
 gcd:
   "/data/user/kath/gcd/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115_withSLCCal2.i3.gz"
 
 version:
-  "lateVirgo"
+  "earlySagittarius"

@@ -58,7 +58,7 @@ class Make(object):
     def recoAndClean(self, args):
         recoAndClean = Preprocess_condor.CondorFilter(args)
         outdir = recoAndClean.check_socket()
-        self.emptyCheck(args.outdir, recoAndClean.recoAndClean_files)
+        self.emptyCheck(args.outdir, recoAndClean.reco_and_clean_files)
 
     # Corrected makeStackFile method using lambda for passing arguments
     def makeStackFile(self, args):
