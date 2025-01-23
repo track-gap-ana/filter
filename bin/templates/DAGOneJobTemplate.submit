@@ -11,9 +11,6 @@
 # icecube-computing <icecube-computing@icecube.wisc.edu>
 ###############################################
 
-# this is where the output of the job (usually .i3) goes
-Outdir = <outputdir>
-
 ## Will your job take longer than 12 hours, or are you testing the interface?
 ## Then un-comment one of these. 
 # +AccountingGroup="long.gladstone"

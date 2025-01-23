@@ -89,7 +89,10 @@ class CondorFilter():
             if infile.endswith('.i3') or infile.endswith('.i3.gz') or infile.endswith('.i3.zst') and ("corsika" in infile or 'LLPSimulation' in infile):
                 logger.debug(f'Processing file: {infile}')
                 input_file = os.path.join(indir, infile)
-                basename = os.path.basename(infile[:-7])
+                # THIS IS UNTESTED AND MIGHT BREAK PLEASE TEST BEFORE HAND!!
+                basename = os.path.basename(os.path.dirname(input_file))
+                # normal one:
+                # basename = os.path.basename(infile[:-7])
                 logger.debug(f"Basename: {basename}")
                 if self.args.withbkg:
                     unique_job_id = infile.split(".")[-3]

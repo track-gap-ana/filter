@@ -9,6 +9,7 @@ import OfflinePreprocess
 import Preprocess_condor
 import Logging
 import ConfigHelper
+import GitCommitter
 
 """
 
@@ -33,6 +34,12 @@ class Make(object):
         else:
             func()
 
+    def commit(self, args):
+        zodiac = ConfigHelper.ConfigHelper(config_samples = args.config_samples).loadVersion()
+        version = args.version
+        message = GitCommitter.buildMessage(zodiac, version, args.commit_message)
+        GitCommitter.commit_changes(message)
+
     # Corrected processOnline method
     def processOnline(self, args):
         online = Preprocess_condor.CondorFilter(args)
@@ -47,7 +54,6 @@ class Make(object):
         if args.dag is True:
             offline = Preprocess_condor.CondorFilter(args)
             outdir = offline.check_socket()
-            outdir
             # Pass the function reference, not the result of its execution
             self.emptyCheck(outdir, offline.process_offline_files)
         else:
@@ -91,15 +97,18 @@ class Make(object):
         # make online files
         if args.type == "online":
             self.processOnline(args)
+            self.commit(args)
         
         # make offline files from online files
         if args.type == "offline":
             # only read clean files
             if args.clean:
                 self.recoAndClean(args)
+                self.commit(args)
             # perform entire offline processing
             else:
                 self.processOffline(args)
+                self.commit(args)
 
         # make stacks with new variables
         if args.type == "stack":
@@ -144,7 +153,7 @@ if __name__ == "__main__":
     parser.add_argument('--clean', '-RC', action="store_true", help="Read clean files")
     ## condor / DAGMan submission and relevant path finding only arguments
     parser.add_argument('--dag', '-D', action="store_true", help="Submit jobs to condor")
-    parser.add_argument('--version', '-v', default="v1", help="Version of the output files")
+    parser.add_argument('--version', '-v', default="v1", help="Version of the output files and commit")
     
     # FILTER STUDIES 
     ## variable calculation

@@ -113,7 +113,7 @@ Plotting stacks for signal and backgorund (with background weights) can be done 
 `python bin/trackgapana.py --plot --type stack` 
 
 
-## Misc information
+## Misc information and functionalities
 
 #### DAGman functionaliteis: 
 
@@ -124,3 +124,19 @@ Monitor jobs:
 
 Resubmit failed subprocesses:
  - rerun the original python line from above
+
+#### Removing corrupt condor output files
+
+An independent script for removing corrupted files from failed or retired condor jobs.
+
+##### Usage
+
+`python bin/dagcheck.py --folder path/to/bad/jobs` 
+
+In this instance, you will be compiling a list of files that failed the frame check. It is written to `bad_files.txt`. You have the option to run with the `--remove-bad` flag if you know the files you want to identify as bad you must immediately remove.
+
+Otherwise, you may run separately:
+
+`python bin/dagcheck.py --folder path/to/bad/jobs --remove-bad` 
+
+This will first check to make sure that the `bad_files.txt` exists, and if it does, to just remove the files saved in that file. 
