@@ -95,15 +95,15 @@ def df_from_hdf5_with_filter_extraction(hdf5_file,
 # OPEN HDF5
 online_hdf5 = tables.open_file(params['online'], 'r')
 offline_hdf5 =  tables.open_file(params['offline'], 'r')
-
+print(offline_hdf5)
 # GET FILTER NAMES
 filter_names = []
 filtergroup = offline_hdf5.root[params["filtermask"]]
-for col in filtergroup.colnames():
+for col in filtergroup.colnames:
     # check if a column is 2D, if yes then assume it's a filter
     if filtergroup.col(col).shape[1] == 2:
         filter_names.append(col)
-print("Colnames in filtermask", filtergroup.colnames())
+print("Colnames in filtermask", filtergroup.colnames)
 print("Filter names", filter_names)
 
 ##### OFFLINE24 HDF5 -> DF ##################
