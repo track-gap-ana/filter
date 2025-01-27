@@ -95,7 +95,7 @@ def df_from_hdf5_with_filter_extraction(hdf5_file,
 # OPEN HDF5
 online_hdf5 = tables.open_file(params['online'], 'r')
 offline_hdf5 =  tables.open_file(params['offline'], 'r')
-print(offline_hdf5)
+
 # GET FILTER NAMES
 filter_names = []
 filtergroup = offline_hdf5.root[params["filtermask"]]
@@ -104,8 +104,8 @@ for col in filtergroup.colnames:
     if len(filtergroup.col(col).shape) > 1: # is there a second dim?
         if filtergroup.col(col).shape[1] == 2: # is the second dim size 2?
             filter_names.append(col)
-print("Colnames in filtermask:", filtergroup.colnames)
-print("Filter names used:", filter_names)
+print("Colnames in filtermask:\n", filtergroup.colnames)
+print("Filter names used:\n", filter_names)
 
 ##### OFFLINE24 HDF5 -> DF ##################
 # {"filter":[condition, prescale]} -> {"filter":both, "filter_cond":condition, "filter_prescale":prescale} #####
@@ -157,7 +157,7 @@ def get_frac(df, colnames, tot_weight, weight_name="weight"):
     weighted_frac = weighted_columns.sum()/tot_weight
     return weighted_frac
 
-print("### ONLY CONDITION ###")
+### ONLY CONDITION ###
 filter_names_condition = [name+"_cond" for name in filter_names]
 frac = get_frac(df_offline, filter_names_condition, online_tot_weight)
 plot_bar_chart(frac,
@@ -173,7 +173,7 @@ plot_bar_chart(frac,
                ylog=True
               )
 
-print("### PRESCALE & CONDITION ###")
+### PRESCALE & CONDITION ###
 frac = get_frac(df_offline, filter_names, online_tot_weight)
 plot_bar_chart(frac,
                'LLP survival rate online -> offline24',
@@ -200,14 +200,12 @@ plot_bar_chart(frac,
 
 ##### PLOT ENERGY SPECTRUM ####
 # cut out filters with less than cutoff survival rate
-print("### SPECTRUM PLOTS ###")
 frac = get_frac(df_offline, filter_names, online_tot_weight)
 frac = frac.sort_values(ascending=False)
 print("Total survival rate per filter", frac)
 frac = frac[frac > params["cutoff"]]
 print("Total survival rate per filter AFTER CUTOFF = {}".format(params["cutoff"]), frac)
 filternames_survive = list(frac.index)
-print("Name of filters after cutoff", filternames_survive)
 
 # energy
 colname = "TotalEnergy"
@@ -253,7 +251,7 @@ ratio_plot(df_online, df_offline, colname, logbins, path, title="LLP Survival ra
 # plot each filter ratio gap length
 for filtername in filternames_survive:
     df_filtered = df_offline[df_offline[filtername]]
-    path=os.path.join(params["plot-folder"], "/ratio/gap_length/"+filtername+"_ratio_plot.png")
+    path=os.path.join(params["plot-folder"], "ratio/gap_length/"+filtername+"_ratio_plot.png")
     ratio_plot(df_online, df_filtered, colname, logbins, path, label1="Online", label2=filtername,
               title=filtername, xlabel="Gap Length [m]", color1="orange", color2="purple")
 

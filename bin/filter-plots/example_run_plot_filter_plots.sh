@@ -2,7 +2,7 @@ online_path="/data/user/axelpo/analysis-datasets/sig/compare_online_offline24_21
 offline_path="/data/user/axelpo/analysis-datasets/sig/compare_online_offline24_215984659/offline24_sig.hdf5"
 
 setname="online_offline24_215984659_50m_mingap"
-plotfolder="comparison_plots/"+$setname+"/"
+plotfolder="comparison_plots/"$setname"/"
 cutoff=0.0 # all filters
 filtermask="OfflineFilterMask"
 
