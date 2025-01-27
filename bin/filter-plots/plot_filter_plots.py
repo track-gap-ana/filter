@@ -98,7 +98,7 @@ offline_hdf5 =  tables.open_file(params['offline'], 'r')
 
 # GET FILTER NAMES
 filter_names = []
-filtergroup = filtergroup = offline_hdf5.root[params["filtermask"]]
+filtergroup = offline_hdf5.root[params["filtermask"]]
 for col in filtergroup.colnames():
     # check if a column is 2D, if yes then assume it's a filter
     if filtergroup.col(col).shape[1] == 2:
