@@ -6,7 +6,7 @@ plotfolder="comparison_plots/"+$setname+"/"
 cutoff=0.0 # all filters
 filtermask="OfflineFilterMask"
 
-python filter_plots.py \
+python plot_filter_plots.py \
     --online $online_path \
     --offline $offline_path \
     --plot-folder $plotfolder \
