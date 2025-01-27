@@ -101,10 +101,11 @@ filter_names = []
 filtergroup = offline_hdf5.root[params["filtermask"]]
 for col in filtergroup.colnames:
     # check if a column is 2D, if yes then assume it's a filter
-    if filtergroup.col(col).shape[1] == 2:
-        filter_names.append(col)
-print("Colnames in filtermask", filtergroup.colnames)
-print("Filter names", filter_names)
+    if len(filtergroup.col(col).shape) > 1: # is there a second dim?
+        if filtergroup.col(col).shape[1] == 2: # is the second dim size 2?
+            filter_names.append(col)
+print("Colnames in filtermask:", filtergroup.colnames)
+print("Filter names used:", filter_names)
 
 ##### OFFLINE24 HDF5 -> DF ##################
 # {"filter":[condition, prescale]} -> {"filter":both, "filter_cond":condition, "filter_prescale":prescale} #####
