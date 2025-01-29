@@ -140,3 +140,7 @@ Otherwise, you may run separately:
 `python bin/dagcheck.py --folder path/to/bad/jobs --remove-bad` 
 
 This will first check to make sure that the `bad_files.txt` exists, and if it does, to just remove the files saved in that file. 
+
+#### Version controlling with git messages
+
+In filter sample productions, plot alterations, etc, you may commit the current repo. Please add `-m "your commit message"` to your run line. This will take a snapshot of the current repo + the run line + timestamp and commit to your branch. 
