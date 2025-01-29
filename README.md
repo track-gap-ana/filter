@@ -1,5 +1,18 @@
 # microNN_filter
 The following lines and defaults in the code are for cobalt users. Samples need to be redirected if using other machines. 
+## Table of Contents
+
+1. [Existing Pass3 Filters](#existing-pass3-filters)
+    - [0a. Online: Prime simulation with Base Processing](#0a-online-prime-simulation-with-base-processing)
+    - [0b. Offline: Prime simulation with Base Processing](#0b-offline-prime-simulation-with-base-processing)
+2. [Variable Calculator](#variable-calculator)
+3. [Histogram & Plotting](#histogram--plotting)
+    - [Stacks](#stacks)
+4. [Misc information and functionalities](#misc-information-and-functionalities)
+    - [DAGman functionalities](#dagman-functionalities)
+    - [Removing corrupt condor output files](#removing-corrupt-condor-output-files)
+    - [Version controlling with git messages](#version-controlling-with-git-messages)
+
 ### Existing Pass3 Filters
 Pull and checkout desired branch 
 
