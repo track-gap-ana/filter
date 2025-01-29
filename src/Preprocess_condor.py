@@ -33,34 +33,20 @@ class CondorFilter():
 
     def __init__(self, args):
         self.args = args
-        self.load_samples()
-        self.ConfigHelper = ConfigHelper.ConfigHelper(config_var=args.config_var, config_samples=args.config_samples)
+        self.ConfigHelper = ConfigHelper.ConfigHelper(config_var=self.args.config_var, config_samples=self.args.config_samples)
+        # load from config files
+        self.DIR_TYPES = self.ConfigHelper.loadSig()
+        self.SAMPLE_TYPES = self.ConfigHelper.loadSigType()
+        self.GCD_PATH = self.ConfigHelper.loadGCD()
+        self.VERSION = self.ConfigHelper.loadVersion()
+        self.SIG_TOP = self.ConfigHelper.loadSig()
+        self.BKG_TOP = self.ConfigHelper.loadBkg()
 
     def check_socket(self):
         hostname = socket.gethostname()
         if 'submit-1' not in hostname:
             logger.warning("Please log into submit-1.icecube.wisc.edu to run this script.")
             logger.error("This script can only be run on a condor submission node.")
-
-    def load_samples(self):
-        with open(self.args.config_samples, 'r') as file:
-            samples = yaml.safe_load(file)
-        self.DIR_TYPES = list(samples['sig'].keys())[0]
-        self.SAMPLE_TYPES = [samples['sig'][self.DIR_TYPES]]
-        self.GCD_PATH = samples['gcd']
-        self.VERSION = samples['version']
-        self.SIG_TOP = self.args.sigs_path
-        self.BKG_TOP = self.args.bkg_path
-
-    def alter_name(self, sample_type):
-        if self.args.fast:
-            print("fast mode")
-            sample_type = f"{sample_type}_test"
-        elif "*" is sample_type:
-            sample_type = "full"
-        else:
-            sample_type = sample_type
-        return sample_type.replace("*", "")
 
     def set_dirs(self, exedir_only=False):
         current_date = datetime.datetime.now().strftime("%d%m%y")
@@ -99,7 +85,7 @@ class CondorFilter():
                 else:
                     unique_job_id = indir.split("/")[-1] if self.args.type == 'online' else re.search(r'(LLPSimulation.*?\.i3(?:\.gz)?)$', infile).group(1)
                 job_name = f'{self.VERSION}_{self.file_type_name}_{job_suffix}_{datetime.datetime.now().strftime("%m%d%Y")}'
-                job_id = f"{job_name}_{unique_job_id}_{self.args.version}"
+                job_id = f"{self.VERSION}_{unique_job_id}_{self.args.version}"
                 logger.debug(f'JOBID: {job_id}')
                 logger.debug(f'JOBNAME: {job_name}')
                 dag_file.write(f"JOB {job_id} {self.EXEDIR}/DAGOneJob.submit\n")
@@ -125,7 +111,7 @@ class CondorFilter():
     def process_sample_type(self, sample_type, job_suffix, dag_file):
         logger.info(f'Processing sample type: {sample_type}')
         dir_paths = glob.glob(f"{self.SIG_TOP}{sample_type}")
-        self.file_type_name = self.alter_name(sample_type)
+        self.file_type_name = self.ConfigHelper.alter_name(sample_type, self.args)
         self.set_dirs()
         os.system(f'. builddag.sh {self.OUTPUTDIR} {self.LOGDIR} {self.ERRORDIR} {self.EXEDIR} {self.PROCESS}')
         counter = 0
@@ -155,7 +141,7 @@ class CondorFilter():
         self.set_dirs(exedir_only=True)
         with open(f"{self.EXEDIR}/myJobs.dag", "w") as dag_file:
             sub_dir = os.path.basename(dir_path)
-            self.file_type_name = self.alter_name("CORSIKA")
+            self.file_type_name = self.ConfigHelper.alter_name("CORSIKA", self.args)
             self.set_dirs()
             os.system(f'. builddag.sh {self.OUTPUTDIR} {self.LOGDIR} {self.ERRORDIR} {self.EXEDIR} {self.PROCESS}')
             self.make_sub_dirs(sub_dir)

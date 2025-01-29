@@ -12,6 +12,42 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ConfigHelper(object):
+    """
+    A helper class to manage configuration files and extract specific data from them.
+    Attributes:
+        config_var (str): Path to the configuration variable YAML file.
+        config_samples (str): Path to the configuration samples YAML file.
+    Methods:
+        loadSamplesConfig():
+            Loads the configuration samples from the YAML file.
+        loadBkg():
+            Loads the 'bkg' key from the configuration samples.
+        loadSig():
+            Loads the first key under the 'sig' key from the configuration samples.
+        loadSigType():
+            Loads the 'sig' key and its types from the configuration samples.
+        loadGCD():
+            Loads the 'gcd' key from the configuration samples.
+        loadVersion():
+            Loads the 'version' key from the configuration samples.
+        loadConfig():
+            Loads the configuration variables from the YAML file.
+        loadVars():
+            Loads the 'vars' keys from the configuration variables.
+        loadColors():
+            Loads the 'colorblind' attribute from the configuration variables.
+        loadFilter():
+            Loads the 'filter' key from the configuration variables.
+        parseLegend(fileName):
+            Parses the legend information from the given file name.
+        readConfigs(var, args):
+            Reads the configuration variables and returns the bins, min_val, and max_val.
+        makeDirs(directory):
+            Creates the specified directory if it does not exist.
+        alter_name(sig_type, fast=False):
+            Alters the signal type name based on the provided conditions.
+    """
+    
     def __init__(self, config_var=None, config_samples=None):
         self.config_var = config_var
         self.config_samples = config_samples
@@ -118,10 +154,12 @@ class ConfigHelper(object):
             os.makedirs(directory)
         return directory
     
-    def alter_name(self, sig_type, fast = False):
-        if fast is True:
+    def alter_name(self, sample_type, args):
+        if args.fast:
             print("fast mode")
-            sig_type = "test"
-        if "*" is sig_type:
-            sig_type = "full"
-        return sig_type.replace("*","")
+            sample_type = f"{sample_type}_test"
+        elif "*" is sample_type:
+            sample_type = "full"
+        else:
+            sample_type = sample_type
+        return sample_type.replace("*", "")

@@ -9,8 +9,8 @@ sig:
     # "DarkLeptonicScalar.mass-110.eps-3e-05.nevents-500000.0_ene_200.0_15000.0_gap_50.0_240919.216129961"
     # "DarkLeptonicScalar.mass-110.eps-3e-05.nevents-500000.0_ene_200.0_15000.0_gap_50.0_240917.215984659"
 # testing sig    
-      "*gap_5*"
-
+    # "*gap_5*"
+    "DarkLeptonicScalar.mass-110.eps-3e-05.nevents-500000.0_ene_200.0_15000.0_gap_50.0_250106.222680504"
     
 bkg:
 # training bkg
