@@ -128,8 +128,8 @@ Supporting data samples with a signal score from a model in the frames.
 ##### Options:
 `--redo` : use if you have already created plots 
 
-Plotting stacks for signal and backgorund (with background weights) can be done by using the `--plot` flag. An example run line is: 
-`python bin/trackgapana.py --plot --type stack` 
+Plotting stacks for signal and background (with background weights) can be done by using the `--plot` flag. An example run line is: 
+`python bin/trackgapana.py --plot stack --type stack --outdir test` 
 
 
 ## Misc information and functionalities

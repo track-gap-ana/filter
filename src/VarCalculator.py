@@ -26,7 +26,7 @@ class VarCalculator(object):
         self.version = self.config.loadVersion()
         self.vars = self.config.loadVars()
         self.filter = self.config.loadFilter()
-        self.model = self.config.loadModel()
+        self.model,_ = self.config.loadModel()
         self.outdir = self.config.makeDirs(args.outdir)
         self.i3 = args.i3
         self.dag = args.dag

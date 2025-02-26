@@ -1,3 +1,4 @@
+# Histogram variables 
 vars:
     # Sim only variables
     # "Edeposited"                : [100, 0, 1000]
@@ -9,14 +10,17 @@ vars:
     "totalPulseCharge"          : [100, 0, 4000]
     "firstPulseTime"            : [100, 0, 1000]
     "chargeWeightedStdDev"      : [100, 0, 1000]
-  
-# -- hist configurations
-attri:
-  "colorblind"             : [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", 
-                              "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5",
-                              "#ffffff", "#56b4e9", "#009e73", "#f0e442"]
+
+# Plotting selections  
 filter: 
     null
 
 model: 
-    lcsc_prediction
+    "lcsc_prediction" : [0.88, 0.90, 0.94]
+
+
+# Histogram misc configurations
+attri:
+  "colorblind"             : [ "#003f5c", "#bc5090", "#ffa600", "#ff6361", "#000000", 
+                              "#444444", "#888888", "#cccccc", "#e6e6e6", "#f5f5f5",
+                              "#ffffff", "#56b4e9", "#009e73", "#f0e442"]

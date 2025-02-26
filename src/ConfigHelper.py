@@ -121,11 +121,14 @@ class ConfigHelper(object):
         return filter
 
     def loadModel(self):
-        # Load the filter from the config_var.yaml file
+        # Load the model from the config_var.yaml file
         config_data = self.loadConfig()
-        model = config_data['model']
-        return model
-    
+        model_dict = config_data['model']        
+        # Extract the model name and working points
+        model = next(iter(model_dict))
+        wps = model_dict[model]
+        return model, wps
+
     def parseLegend(self,fileName):
         mass_match = re.search(r".mass-(\d+)", fileName)
         mass_match = f"{float(mass_match.group(1))} GeV"

@@ -4,7 +4,7 @@ import argparse
 import logging
 
 import VarCalculator
-import Plot
+from Plot import PlotStack
 import OfflinePreprocess
 import Preprocess_condor
 import Logging
@@ -73,12 +73,18 @@ class Make(object):
 
     # Corrected plotStack method using lambda for passing arguments
     def plotStack(self, args):
-        plot = Plot.Stack(outdir=args.outdir, config_var=args.config_var, config_samples=args.config_samples)
+        plot = PlotStack(outdir=args.outdir, config_var=args.config_var, config_samples=args.config_samples)
         # self.emptyCheck(args.outdir, lambda: plot.onePlot(args=args))
         plot.onePlot(args)
 
+    def plotSelections(self, args):
+        plot = PlotStack(outdir=args.outdir, config_var=args.config_var, config_samples=args.config_samples)
+        plot.selectionsPlot(args)
+    """
+    Depreciating this method in favor of plotStackSubplot
+    """
     def plotStackSubplot(self, args):
-        plot = Plot.Stack(outdir=args.outdir, config_var=args.config_var, config_samples=args.config_samples)
+        plot = Stack.PlotStack(outdir=args.outdir, config_var=args.config_var, config_samples=args.config_samples)
         # self.emptyCheck(args.outdir, lambda: plot.subPlot(args=args))
         plot.subPlot(args)
 
@@ -113,8 +119,8 @@ class Make(object):
         # make stacks with new variables
         if args.type == "stack":
             if args.var: self.makeStackFile(args)
-            if args.plot: self.plotStack(args)
-            if args.subplot: self.plotStackSubplot(args)
+            if args.plot == 'var': self.plotStack(args)
+            if args.plot == 'selection': self.plotSelections(args)
 
         # make stack with new variables plotting
         if args.type == "yield":
@@ -162,8 +168,7 @@ if __name__ == "__main__":
     parser.add_argument('--i3', '-I', action="store_true", help="produce i3 files instead of hdf5")
 
     ## plotting 
-    parser.add_argument('--plot', '-P', action="store_true")
-    parser.add_argument('--subplot', '-S', action="store_true")
+    parser.add_argument('--plot', '-P', choices=['var', 'selection'], required=False)
     parser.add_argument('--withbkg', "-B", action="store_true")
     
     # COMMITTING
