@@ -13,7 +13,7 @@ import GitCommitter
 
 """
 
-Driver script for plotting and treeograming 
+Driver script for filter submissions, plotting, and histograming 
 
 """
 logger = logging.getLogger(__name__)
@@ -35,10 +35,10 @@ class Make(object):
             func()
 
     def commit(self, args):
-        zodiac = ConfigHelper.ConfigHelper(config_samples = args.config_samples).loadVersion()
+        zodiac = ConfigHelper.ConfigHelper(config_samples=args.config_samples).loadVersion()
         version = args.version
-        message = GitCommitter.buildMessage(zodiac, version, args.commit_message)
-        GitCommitter.commit_changes(message)
+        message = GitCommitter.GitCommitter.buildMessage(zodiac, version, args.commit_message)
+        GitCommitter.GitCommitter.commit_changes(message)
 
     # Corrected processOnline method
     def processOnline(self, args):
@@ -133,8 +133,9 @@ if __name__ == "__main__":
     default_gcd = config.loadGCD()
     
     # General drivers
-    parser.add_argument("--sigs_path", "-sp", default=default_sig_top, required=False, help="All signal simulation")
+    parser.add_argument("--sigs_path", "-sp", default=default_sig_top, action="store_true", required=False, help="All signal simulation")
     parser.add_argument("--bkg_path", "-bp", default=default_bkg_top)
+    parser.add_argument("--data", action="store_true", required=False, help="Data path")
     parser.add_argument("--gcd_path", '-g', default=default_gcd, required=False)    
     parser.add_argument('--config-var', '-cv', default = default_config_var ,help="config yaml variable file")
     parser.add_argument('--config-samples', '-cs', default = default_config_samples ,help="config yaml samples file")    
@@ -155,7 +156,7 @@ if __name__ == "__main__":
     parser.add_argument('--dag', '-D', action="store_true", help="Submit jobs to condor")
     parser.add_argument('--version', '-v', default="v1", help="Version of the output files and commit")
     
-    # FILTER STUDIES 
+    # SELECTION STUDIES 
     ## variable calculation
     parser.add_argument('--var', '-V', action="store_true")
     parser.add_argument('--i3', '-I', action="store_true", help="produce i3 files instead of hdf5")
@@ -165,7 +166,8 @@ if __name__ == "__main__":
     parser.add_argument('--subplot', '-S', action="store_true")
     parser.add_argument('--withbkg', "-B", action="store_true")
     
-
+    # COMMITTING
+    parser.add_argument('--commit_message', '-m', default="Update", help="Commit message for git")
     args = parser.parse_args()
 
     compile = Make()

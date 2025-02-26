@@ -110,6 +110,12 @@ CORSIKA.hdf5                                                                    
 DarkLeptonicScalar.mass-110.eps-3e-05.nevents-150000.0_ene_2000.0_15000.0_gap_100.0_240602.210981234.hdf5  DarkLeptonicScalar.mass-115.eps-2e-5.nevents-50000_ene_1e2_1e4_gap_100_240510.208851130.hdf5
 ```
 
+##### Data samples:
+
+Supporting data samples with a signal score from a model in the frames. 
+
+`python bin/trackgapana.py --var --type stack --data`
+
 ## 2. Histogram & Plotting: 
 
 ### Stacks

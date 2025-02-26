@@ -1,7 +1,7 @@
 from icecube import icetray, dataio, dataclasses, MuonGun
 
 
-class VarCalculatorHelper:
+class VarCalculatorHelperSim:
     def __init__(self, surface, frame):
         self.surface = surface
         self.frame = frame

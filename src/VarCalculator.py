@@ -9,7 +9,8 @@ import re
 import logging
 import os
 import yaml
-import VarCalculatorHelper
+import VarCalculatorHelperSim
+import VarCalculatorHelperData
 import ConfigHelper
 
 # Set global logger
@@ -19,29 +20,51 @@ class VarCalculator(object):
     def __init__(self, args):
         self.config = ConfigHelper.ConfigHelper(config_var=args.config_var, config_samples=args.config_samples)
         self.sig_top = self.config.loadSig()
+        self.data_top = self.config.loadData()
         self.sig_type = self.config.loadSigType()
         self.gcd = self.config.loadGCD()
         self.version = self.config.loadVersion()
         self.vars = self.config.loadVars()
         self.filter = self.config.loadFilter()
+        self.model = self.config.loadModel()
         self.outdir = self.config.makeDirs(args.outdir)
         self.i3 = args.i3
         self.dag = args.dag
 
     def localTrayLoop(self, args):
+        """
+        Executes the local tray loop for variable calculation.
+        This method processes local input files to calculate variables based on the provided arguments.
+        It can handle both background and signal data, and outputs the results to an HDF5 file.
+        Args:
+            args (Namespace): A namespace object containing the following attributes:
+                withbkg (bool): Flag indicating whether to process background data.
+                bkg_path (str, optional): Path to the background data files.
+                sigs_path (str, optional): Path to the signal data files.
+                config_var (str, optional): Path to the configuration file.
+        Returns:
+            None
+        """
+
         logging.info("\n--------------Making variables")
-        if args.withbkg:
-            logging.info("\n--------------Background booking is turned on and running")
+        if args.data is True:
+            logging.info("\n--------------Data booking is turned on and running")
+            filenamelist = list(glob.glob(self.data_top + "/*i3*"))
+            logger.debug(f"Data files: {filenamelist}")
+            outfile = os.path.join(self.outdir, "data.hdf5")
+            self.runTray(args, out_file=outfile, filenamelist=filenamelist)
+        elif args.withbkg:
+            logging.info("\n--------------Background sim booking is turned on and running")
             filenamelist = list(glob.glob(args.bkg_path + "/*zst"))
             outfile = self.outdir + "/CORSIKA.hdf5"
             self.runTray(args, out_file=outfile, filenamelist=filenamelist, weight=True)
-        else:
-            if args.sigs_path is not None:
-                self.config_var = args.config_var
-                logger.info(f"Config file: {self.config_var}")
-                self.fileStructure(args)
-
-    def fileStructure(self, args):
+        elif args.sigs_path is True:
+            logging.info("\n--------------Signal sim booking is turned on and running")
+            self.config_var = args.config_var
+            logger.info(f"Config file: {self.config_var}")
+            self.sig_fileStructure(args)
+            
+    def sig_fileStructure(self, args):
         filenamelist = [filename for filename in glob.glob(args.sigs_path + "/*i3*") if "DarkLeptonicScalar" in filename] if self.dag else [filename for filename in glob.glob(args.sigs_path + "/*/*/*.i3*") if "DarkLeptonicScalar" in filename]
         if "DarkLeptonicScalar" in args.sigs_path:
             logging.info(f"\n--------------Only one sample type given: \n{args.sigs_path}")
@@ -76,37 +99,50 @@ class VarCalculator(object):
         with open(args.config_var, 'r') as f:
             config = yaml.full_load(f)
         vars = list(config["vars"].keys())
+        if args.fast:
+            fastFrames = 70
         logger.info(f"\n--------------Variables for calculation and booking: \n{vars}")
         tray = I3Tray()
 
-        if weight:
+        if weight: # used for corika samples
             writer = hdfwriter.I3SimHDFWriter
             write_vars = vars + ["CorsikaWeightMap", "I3EventHeader", "PolyplopiaPrimary"]
-        else:
+        else: # used for signal samples
             writer = hdfwriter.I3HDFWriter
-            subeventstream = [self.filter]
             write_vars = vars
-
+            subeventstream = ["InIceSplit"] # default subeventstream
+            if self.filter is not None: subeventstream = [self.filter] # if filter is specified, use it
+            logger.debug(f"Subeventstream: {subeventstream}")
+            
         frame_count = [0]
         tray.Add("I3Reader", filenamelist=filenamelist)
 
-        if self.filter is not None:
-            logger.warning(f"Filtering on:-------------\n {self.filter}")
-            tray.Add(lambda frame: bool(frame["OfflineFilterMask"][self.filter]) if "OfflineFilterMask" in frame else False)
+        # Make selections (or not)
+        if self.filter is not None or self.model is not None:
+            if self.filter is not None: 
+                logger.warning(f"Selecting on Existing Filter:-------------\n {self.filter}")
+                tray.Add(lambda frame: bool(frame["OfflineFilterMask"][self.filter]) if "OfflineFilterMask" in frame else False)
+                write_vars = vars + [self.filter]
+                # This is an unchecked addition! 
+            if self.model is not None: 
+                logger.warning(f"Selecting on Model:-------------\n {self.model}")
+                tray.Add(lambda frame: bool(frame[self.model]) if self.model in frame else False)
+                write_vars = vars + [self.model]
         else:
-            logger.warning(f"-------------\n No filter applied")
-            out_file = out_file.replace(".hdf5", "_noFilter.hdf5")
+            logger.warning(f"-------------\n No selections applied")
+            out_file = out_file.replace(".hdf5", "_noSelection.hdf5")
 
         tray.AddModule(lambda frame: frame_count.append(frame_count.pop() + 1), 'counter')
-        tray.Add(Stack, GCDFile=args.gcd_path, vars=vars)
+        tray.Add(Stack, GCDFile=args.gcd_path, vars=vars, data=args.data)
 
-        if self.i3:
+        if self.i3: # convert hdf5 to i3 files
             tray.AddModule("I3Writer", Filename=out_file.replace(".hdf5", ".i3"))
-        else:
+        else: # write out hdf5 files
             tray.Add(writer, keys=write_vars, output=out_file, SubEventStreams=subeventstream)
 
-        tray.Execute()
+        tray.Execute(fastFrames)
         logger.debug(f"Total number of frames passing filter (if used): {frame_count[0]}")
+        logger.info(f"Output file: {out_file}")
 
 class Geometry(object):
     @staticmethod
@@ -135,20 +171,30 @@ class Stack(icetray.I3Module):
         icetray.I3Module.__init__(self, ctx)
         self.AddParameter("vars", "vars", None)
         self.AddParameter("GCDFile", "GCDFile", "")
+        self.AddParameter("data", "data", False) # default is simulation
 
     def Configure(self):
         self.vars = self.GetParameter("vars")
+        self.data = self.GetParameter("data")
         self.weights = []
         self.gcdFile = self.GetParameter("GCDFile")
         self.surface = Geometry.MakeSurface(self.gcdFile, 0) if self.gcdFile else MuonGun.Cylinder(1000, 500)
 
-    def DAQ(self, frame):
+    def Physics(self, frame):
         weight = frame["muongun_weights"].value if "muongun_weights" in frame else 1
         self.weights.append(weight)
-        var_calculator = VarCalculatorHelper.VarCalculatorHelper(self.surface, frame)
+        if self.data is True:
+            logging.info(f"Running on data")
+            var_calculator = VarCalculatorHelperData.VarCalculatorHelperData(frame)
+        else : 
+            logging.info(f"Running on simulation")
+            var_calculator = VarCalculatorHelperSim.VarCalculatorHelperSim(self.surface, frame)
+
         for var_name in self.vars:
             var_value = var_calculator.RunCalculator(var_name)
+            logging.debug(f"Variable: {var_name} Value: {var_value}")
             frame.Put(var_name, dataclasses.I3Double(var_value))
+            
         self.PushFrame(frame)
 
     def Finish(self):

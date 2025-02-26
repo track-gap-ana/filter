@@ -17,7 +17,9 @@ bkg:
   # "/data/sim/IceCube/2023/filtered/PFFilt/CORSIKA-in-ice/22803/0000000-0000999/"
 # testing bkg
   "/data/sim/IceCube/2023/filtered/PFFilt/CORSIKA-in-ice/22803/0001000-0001999/"
-  
+
+data:
+  "/home/vparrish/test/model_test"
 gcd:
   "/data/user/kath/gcd/GeoCalibDetectorStatus_2021.Run135903.T00S1.Pass2_V1b_Snow211115_withSLCCal2.i3.gz"
 

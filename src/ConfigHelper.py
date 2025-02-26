@@ -71,7 +71,12 @@ class ConfigHelper(object):
         sig = list(config_samples['sig'].keys())[0]
         return sig
 
-    
+    def loadData(self):
+        # Load the data key from the config_samples.yaml file
+        config_samples = self.loadSamplesConfig()
+        data = config_samples['data']
+        return data
+        
     def loadSigType(self):
         # Load the sig key from the config_samples.yaml file
         config_samples = self.loadSamplesConfig()
@@ -114,6 +119,12 @@ class ConfigHelper(object):
         config_data = self.loadConfig()
         filter = config_data['filter']
         return filter
+
+    def loadModel(self):
+        # Load the filter from the config_var.yaml file
+        config_data = self.loadConfig()
+        model = config_data['model']
+        return model
     
     def parseLegend(self,fileName):
         mass_match = re.search(r".mass-(\d+)", fileName)

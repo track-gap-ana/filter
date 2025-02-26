@@ -35,8 +35,8 @@ class Stack():
     def getLabels(self, file_path, titleOnly=False):
         legend = ' '.join((file_path.split('/')[-1]).replace('.', ' ').replace('_', ' ').replace('-', ' ').split()[:-4])
         title = ""  # Initialize title to an empty string
-        if "noFilter" in file_path and titleOnly == False:
-            legend += " No Filter"
+        if "noSelection" in file_path and titleOnly == False:
+            legend += " No Selection"
         if "filter" in file_path and titleOnly == True:
             title = "Pre and post new muon filter"
         return title, legend
@@ -46,8 +46,8 @@ class Stack():
         logger.info("Found HDF5 files: %s", hdf5_files)
         pairs = []
         for file in hdf5_files:
-            if 'noFilter' in file:
-                base_name = file.replace('_noFilter', '')
+            if 'noSelection' in file:
+                base_name = file.replace('_noSelection', '')
                 for other_file in hdf5_files:
                     if other_file == base_name:
                         pairs.append((os.path.join(self.outdir, file), os.path.join(self.outdir, other_file)))
@@ -107,7 +107,6 @@ class Stack():
     def subPlot(self, args):
         logger.info("Plotting subplot variables: %s", self.vars)
         # Get list of HDF5 files in the output directory
-        
 
         # Identify pairs of files
         pairs = self.identifyH5Pairs()
