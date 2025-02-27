@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import os
 import logging
 from Weight import CorsikaWeight
@@ -14,11 +15,9 @@ logger = logging.getLogger(__name__)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 class ConfigureSamples():
-    def __init__(self, outdir, config_var, config_samples):
-        self.config=ConfigHelper.ConfigHelper(config_var=config_var, config_samples=config_samples)
-        self.outdir = self.config.makeDirs(outdir)
+    def __init__(self, config_samples):
+        self.config = ConfigHelper.ConfigHelper(config_samples=config_samples)
         self.sig_types = self.config.loadSigType()
-
 
     def hdf5Reader(self, dir):
         # Directory containing the HDF5 files
@@ -26,7 +25,12 @@ class ConfigureSamples():
 
         # Get list of HDF5 files in the directory
 
+        # The condition if you are using the simulation
         hdf5_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.hdf5') and any(item.replace("*","") in f for item in self.sig_types)]
+        if not hdf5_files:
+            # The condition for using data directory
+            hdf5_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.hdf5')]
+
         logger.debug(f"Found HDF5 files: {hdf5_files}")
         return hdf5_files
         
@@ -38,22 +42,11 @@ class ConfigureSamples():
         if "filter" in file_path and titleOnly == True:
             title = "Pre and post new muon filter"
         return title, legend
-    
-    # This should be depreciated
-    def identifyH5Pairs(self):
-        hdf5_files = [f for f in os.listdir(self.outdir) if f.endswith('.hdf5')]
-        logger.info("Found HDF5 files: %s", hdf5_files)
-        pairs = []
-        for file in hdf5_files:
-            if 'noSelection' in file:
-                base_name = file.replace('_noSelection', '')
-                for other_file in hdf5_files:
-                    if other_file == base_name:
-                        pairs.append((os.path.join(self.outdir, file), os.path.join(self.outdir, other_file)))
-        return pairs
+
 
 class HistogramStack():
     def __init__(self, config_var, config_samples):
+        self.configure_samples = ConfigureSamples(config_samples)
         self.config=ConfigHelper.ConfigHelper(config_var=config_var, config_samples=config_samples)
         self.model, self.wps = self.config.loadModel()
 
@@ -71,26 +64,50 @@ class HistogramStack():
                 weights = corsikaweight.makeWeights(file_path)
                 ax.hist(data, histtype='step', bins=bins, range=(min_val, max_val), color=color, alpha=alpha, label="CORSIKA", weights=weights)
             else:
-                title,legend = ConfigureSamples.getLabels(file_path)
+                _, legend = self.configure_samples.getLabels(file_path)
                 legend += f" Saved events: {frame_count}"
+                logger.debug(f"Legend: {legend}")
+                logger.debug(f'Data: {data}')
                 ax.hist(data, histtype='step', bins=bins, range=(min_val, max_val), color=color, alpha=alpha, label=legend)
     
     def cutHistogram(self, file_path, var, wp, ax, bins, min_val, max_val, color, alpha):
-        """
-        Defines a histogram from selected data of passed working points stored in an HDF5 file to ber used for plotting
-        """
         with h5py.File(file_path, 'r') as hdf5_file:
-            data = np.asarray(hdf5_file[var]['value'][:], dtype=float)
-            model_selection = np.asarray(hdf5_file[self.model]['value'][:], dtype=float)
-            selected_data = data[model_selection > self.wp]
+            # Load the model selection data
+            model_dataset = hdf5_file[self.model]
+            logger.debug(f"Model dataset shape: {model_dataset.shape}")
+            logger.debug(f"Model dataset dtype: {model_dataset.dtype}")
+            if 'signalness' not in model_dataset.dtype.names:
+                logger.error(f"Field 'signalness' not found in model {self.model}.")
+                return
+            model_selection = np.asarray(model_dataset['signalness'], dtype=float)
+            logger.debug(f"Model selection data: {model_selection}")
+
+            # Apply the selection criteria
+            selection_mask = model_selection > wp
+            
+
+            # Load the variable data
+            var_data = hdf5_file[var][:]
+            logger.debug(f"Variable data: {var_data}")
+
+            # Apply the selection mask to the variable data
+            selected_data = var_data[selection_mask]
+            logger.debug(f"Selected data: {selected_data}")
+
+            # Extract the specific field from the structured array if necessary
+            if selected_data.dtype.names:
+                selected_data = selected_data['value']  # Replace 'value' with the correct field name if different
+            # Count the number of events that pass the selection and set the legend
             frame_count = len(selected_data)
-            legend += ConfigHelper.getLabels(file_path)
-            ax.hist(selected_data, histtype='step', bins=bins, range=(min_val, max_val), color=color, alpha=alpha, label=f"{legend} WP: {wp} Events: {frame_count}")
+            _, legend = self.configure_samples.getLabels(file_path)
+            legend += f"WP:{wp} Saved events: {frame_count}"
+            # Plot the histogram
+            ax.hist(selected_data, histtype='step', bins=bins, range=(min_val, max_val), color=color, alpha=alpha, label=legend)
 
 class PlotStack():
     def __init__(self, outdir, config_var, config_samples):
         # Load the local supporting classes
-        self.configure_samples = ConfigureSamples(outdir, config_var, config_samples)
+        self.configure_samples = ConfigureSamples(config_samples)
         self.histogram_stack = HistogramStack(config_var, config_samples)
         self.save_stack = SaveStack()
         
@@ -99,6 +116,7 @@ class PlotStack():
         self.vars = self.config.loadVars()
         self.colors = self.config.loadColors()
         self.outdir = self.config.makeDirs(outdir)
+        _, self.wps = self.config.loadModel()
         
 
     def onePlot(self, args):
@@ -148,97 +166,29 @@ class PlotStack():
         
         for var in self.vars:
             logger.info("Plotting variable with and without WP: %s", var)
-            plt.figure()
-            for hdf5_file_path, color in zip(self.configure_samples.hdf5Reader(self.outdir), self.colors):
+            fig, ax = plt.subplots()
+            for hdf5_file_path in self.configure_samples.hdf5Reader(self.outdir):
                 logger.debug(f"Variable: {var}")
                 bins, min_val, max_val = self.config.readConfigs(var, args)
                 bins = int(bins)
                 min_val = int(min_val)
-                max_val = int(max_val)
+                max_val = int(max_val)  
 
-                # Plot total histogram
-                self.histogram_stack.totalHistogram(hdf5_file_path, var, plt.gca(), bins, min_val, max_val, color, alpha=0.3 if "CORSIKA" in hdf5_file_path else 0.5)
-
-                # Plot cut histogram for each WP
-                for wp in self.wps:
-                    self.histogram_stack.cutHistogram(hdf5_file_path, var, wp, plt.gca(), bins, min_val, max_val, color, alpha=0.3 if "CORSIKA" in hdf5_file_path else 0.5)
- 
+                # Plot total histogram without selection
+                self.histogram_stack.totalHistogram(hdf5_file_path, var, ax, bins, min_val, max_val, self.colors[0], alpha=0.3 if "CORSIKA" in hdf5_file_path else 0.5)
+                
+                # Plot histograms with selections for each WP
+                for i, wp in enumerate(self.wps):
+                    wp_color = self.colors[(i + 1) % len(self.colors)]  # Ensure different colors for each WP
+                    self.histogram_stack.cutHistogram(hdf5_file_path, var, wp, ax, bins, min_val, max_val, wp_color, alpha=0.3 if "CORSIKA" in hdf5_file_path else 0.5)
+            
+            # Set labels and title
+            ax.set_xlabel(var)
+            ax.set_title(f'Histogram of {var} with and without WP selection')
+            
             plt.legend(fontsize=6)
             plt.show()
-            self.save_stack.saveFigure(plt.gcf(), var, self.outdir)
-
-    """
-    This should be depreciated -- instead of creating two different hdf5 files with different selections, we are going to make the selections in the Histogram class in this file instead
-    """
-    def subPlot(self, args):
-        
-        logger.info("Plotting subplot variables: %s", self.vars)
-        # Get list of HDF5 files in the output directory
-
-        pairs = self.identifyH5Pairs()
-        logger.debug("Pairs: %s", pairs)
-        
-        for var in self.vars:
-            # Create subplots for each var
-            fig, axes = plt.subplots(len(pairs), 1, figsize=(10, 5 * len(pairs)))
-            logger.debug("Plotting variable: %s", var)
-
-            # Ensure axes is iterable even if there's only one subplot
-            if len(pairs) == 1:
-                axes = [axes]
-
-            for i, (no_filter_file, filter_file) in enumerate(pairs):
-                bins, min_val, max_val = self.config.readConfigs(var, args)
-                bins = int(bins)
-                min_val = int(min_val)
-                max_val = int(max_val)
-
-                ax = axes[i]  # Get the corresponding subplot axis
-
-                self.totalHistogram(no_filter_file, var, ax, bins, min_val, max_val, color='blue', alpha=0.5)
-                self.totalHistogram(filter_file, var, ax, bins, min_val, max_val, color='red', alpha=0.5)
-                
-                title, _ = self.getLabels(filter_file, titleOnly=True)
-
-                ax.set_yscale('log')
-                ax.legend(fontsize=6)
-                ax.set_xlabel(var)
-                ax.set_ylabel("NEvents")
-                ax.set_title(f'{title} - Pair {i+1}')
-                
-            plt.tight_layout()
-
-            SaveStack.saveFigure(fig, var)
-
-         #Identify pairs of files -- returns list of pairs
-        pairs = self.identifyH5Pairs()
-        figure_paths = []
-        logger.debug("Pairs: %s", pairs)
-        for var in self.vars:
-            logger.info("Plotting variable: %s", var)
-            plt.figure()
-            for i, (no_filter_file, filter_file) in enumerate(pairs):
-                logger.debug(f"Variable: {var}")
-                bins, min_val, max_val = self.config.readConfigs(var, args)
-                
-                # Ensure bins, min_val, and max_val are of type float
-                bins = int(bins)
-                min_val = int(min_val)
-                max_val = int(max_val)
-
-                self.totalHistogram(no_filter_file, var, plt.gca(), bins, min_val, max_val, color='blue', alpha=0.5)
-                self.totalHistogram(filter_file, var, plt.gca(), bins, min_val, max_val, color='red', alpha=0.5)
-                title,_ = self.getLabels(no_filter_file, titleOnly=True)
-                plt.yscale('log')
-                plt.legend(fontsize=6)
-                plt.xlabel(var)
-                plt.title(title)
-                plt.ylabel("NEvents")
-                plt.show()
-                fig_path = var+"_"+filter_file.split('/')[-1].replace('.hdf5','')
-                figure_paths.append(os.path.abspath(fig_path))
-                SaveStack.saveFigure(plt.gcf(), fig_path)
-
+            self.save_stack.saveFigure(fig, var, self.outdir)
 
         # self.generate_slide_deck(figure_paths)
     

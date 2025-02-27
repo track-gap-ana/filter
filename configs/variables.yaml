@@ -16,7 +16,7 @@ filter:
     null
 
 model: 
-    "lcsc_prediction" : [0.88, 0.90, 0.94]
+    "lcsc_prediction" : [0.80, 0.88, 0.95]
 
 
 # Histogram misc configurations
